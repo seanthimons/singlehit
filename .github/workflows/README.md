@@ -23,6 +23,5 @@ not allow the Actions token to push the release commit and tag.
 R package jobs set `R_PROFILE_USER=/dev/null` so the package is built and tested
 without the repository's optional boosterpak/renv development startup profile.
 
-Stable releases use `autonewsmd` plus `dev/normalize_news.R`; `NEWS.md` does not
-need to be maintained manually. The normalizer also fixes common commit-message
-typos and standardizes beta-Poisson terminology before the release commit.
+Stable releases use `autonewsmd` and normalize version headings for pkgdown
+in the workflow; `NEWS.md` does not need to be maintained manually.
