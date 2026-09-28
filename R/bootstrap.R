@@ -13,7 +13,8 @@
 #' @param backend Execution backend. `"auto"` uses mirai above 1,000 replicates
 #'   when it is installed and otherwise runs sequentially. `"sequential"` runs
 #'   refits in the current R process. `"mirai"` distributes refits to existing
-#'   daemons or a temporary local pool and requires an installed `singlehit`.
+#'   daemons or a temporary local pool. When loaded with `pkgload::load_all()`,
+#'   the same checkout is loaded on each worker.
 #' @param compute Optional mirai compute profile name. Ignored by the sequential
 #'   backend.
 #' @param workers Number of temporary local mirai daemons. `NULL` uses 75% of
@@ -171,9 +172,6 @@ start_mirai_bootstrap <- function(inputs, object) {
   if (!requireNamespace("mirai", quietly = TRUE)) {
     stop("Package 'mirai' is required for `backend = \"mirai\"`.", call. = FALSE)
   }
-  if (!"singlehit" %in% utils::installed.packages()[, "Package"]) {
-    stop("Install singlehit before using the mirai backend; workers cannot use pkgload::load_all().", call. = FALSE)
-  }
   compute <- inputs$compute
   owns_daemons <- !mirai::daemons_set(.compute = compute)
   if (owns_daemons) {
@@ -185,15 +183,23 @@ start_mirai_bootstrap <- function(inputs, object) {
   }
   # Keep a 10,000-replicate run to 500 queued jobs while retaining load balancing.
   batches <- split(inputs$tasks, ceiling(seq_along(inputs$tasks) / 20L))
+  dev_path <- if (requireNamespace("pkgload", quietly = TRUE) && pkgload::is_dev_package("singlehit")) {
+    getNamespaceInfo("singlehit", "path")
+  } else {
+    NULL
+  }
   mapped <- tryCatch(
     mirai::mirai_map(
       batches,
-      function(batch, original_fit) {
+      function(batch, original_fit, dev_path) {
+        if (!is.null(dev_path) && !pkgload::is_dev_package("singlehit")) {
+          pkgload::load_all(dev_path, quiet = TRUE)
+        }
         dplyr::bind_rows(lapply(batch, function(task) {
           singlehit:::bootstrap_refit(original_fit, task$sample_data, task$replicate)
         }))
       },
-      .args = list(original_fit = object),
+      .args = list(original_fit = object, dev_path = dev_path),
       .compute = compute
     ),
     error = function(cnd) {

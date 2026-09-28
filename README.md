@@ -189,8 +189,8 @@ separate binomial observations, so repeated doses across trials are preserved
 
 ### Parallel bootstraps (mirai)
 
-Install `singlehit` and load it with `library(singlehit)` before a mirai run;
-workers cannot use code loaded only through `pkgload::load_all()`.
+Mirai also works after `devtools::load_all()`: local workers load the same
+checkout before starting the bootstrap.
 
 Bootstrap runs above 1,000 replicates automatically use mirai when it is
 installed and show completion progress while results are collected. If no

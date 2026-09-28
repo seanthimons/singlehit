@@ -34,6 +34,7 @@ Imports:
 Suggests:
     knitr,
     mirai (>= 2.5.0),
+    pkgload,
     rmarkdown,
     Rmpfr,
     testthat (>= 3.0.0)
