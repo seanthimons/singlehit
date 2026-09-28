@@ -13,7 +13,7 @@
 #' @param backend Execution backend. `"auto"` uses mirai above 1,000 replicates
 #'   when it is installed and otherwise runs sequentially. `"sequential"` runs
 #'   refits in the current R process. `"mirai"` distributes refits to existing
-#'   daemons or a temporary local pool.
+#'   daemons or a temporary local pool and requires an installed `singlehit`.
 #' @param compute Optional mirai compute profile name. Ignored by the sequential
 #'   backend.
 #' @param workers Number of temporary local mirai daemons. `NULL` uses 75% of
@@ -171,6 +171,9 @@ start_mirai_bootstrap <- function(inputs, object) {
   if (!requireNamespace("mirai", quietly = TRUE)) {
     stop("Package 'mirai' is required for `backend = \"mirai\"`.", call. = FALSE)
   }
+  if (!"singlehit" %in% utils::installed.packages()[, "Package"]) {
+    stop("Install singlehit before using the mirai backend; workers cannot use pkgload::load_all().", call. = FALSE)
+  }
   compute <- inputs$compute
   owns_daemons <- !mirai::daemons_set(.compute = compute)
   if (owns_daemons) {
@@ -185,12 +188,12 @@ start_mirai_bootstrap <- function(inputs, object) {
   mapped <- tryCatch(
     mirai::mirai_map(
       batches,
-      function(batch, original_fit, refit) {
+      function(batch, original_fit) {
         dplyr::bind_rows(lapply(batch, function(task) {
-          refit(original_fit, task$sample_data, task$replicate)
+          singlehit:::bootstrap_refit(original_fit, task$sample_data, task$replicate)
         }))
       },
-      .args = list(original_fit = object, refit = bootstrap_refit),
+      .args = list(original_fit = object),
       .compute = compute
     ),
     error = function(cnd) {
