@@ -3,7 +3,7 @@
 #' Generates grouped binomial bootstrap samples and refits the model. The
 #' `"observed"` resampling method preserves the legacy CAMRA behavior by using
 #' each dose group's observed response probability. The `"fitted"` method is a
-#' model-based parametric bootstrap. Mirai runs show progress as replicates
+#' model-based parametric bootstrap. Mirai runs show progress as batches
 #' finish.
 #'
 #' @param object A `qdr_fit` object.
@@ -63,7 +63,7 @@ bootstrap_dose_response_async <- function(
 
 #' Collect a non-blocking bootstrap job
 #'
-#' Shows mirai's progress indicator while waiting for replicates to finish.
+#' Shows mirai's progress indicator while waiting for batches to finish.
 #'
 #' @param job A `qdr_bootstrap_job` returned by
 #'   [bootstrap_dose_response_async()].
@@ -180,11 +180,15 @@ start_mirai_bootstrap <- function(inputs, object) {
     workers <- if (is.null(inputs$workers)) recommended_bootstrap_workers() else inputs$workers
     mirai::daemons(workers, .compute = compute)
   }
+  # Keep a 10,000-replicate run to 500 queued jobs while retaining load balancing.
+  batches <- split(inputs$tasks, ceiling(seq_along(inputs$tasks) / 20L))
   mapped <- tryCatch(
     mirai::mirai_map(
-      inputs$tasks,
-      function(task, original_fit, refit) {
-        refit(original_fit, task$sample_data, task$replicate)
+      batches,
+      function(batch, original_fit, refit) {
+        dplyr::bind_rows(lapply(batch, function(task) {
+          refit(original_fit, task$sample_data, task$replicate)
+        }))
       },
       .args = list(original_fit = object, refit = bootstrap_refit),
       .compute = compute

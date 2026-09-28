@@ -14,5 +14,5 @@ collect_bootstrap(job)
 A completed \code{qdr_bootstrap} tibble.
 }
 \description{
-Shows mirai's progress indicator while waiting for replicates to finish.
+Shows mirai's progress indicator while waiting for batches to finish.
 }
