@@ -216,3 +216,40 @@ autoplot.qdr_analysis <- function(object, levels = c(0.95, 0.99), points = 200L,
     ggplot2::labs(x = "Dose", y = "Probability of response") +
     ggplot2::theme_minimal(base_size = 11)
 }
+
+#' Overlay fitted models on one dose-response plot
+#'
+#' Shows each fitted model against the observed responses without confidence
+#' intervals. The standard [ggplot2::autoplot()] view remains faceted.
+#'
+#' @param object A `qdr_analysis` object.
+#' @param points Number of log-spaced doses in each curve.
+#'
+#' @return A ggplot object.
+#' @export
+plot_model_overlay <- function(object, points = 200L) {
+  if (!inherits(object, "qdr_analysis")) {
+    stop("`object` must be a qdr_analysis object.", call. = FALSE)
+  }
+  curves <- purrr::map_dfr(object$fits, function(fit) {
+    prediction_curve(fit, points = points) |>
+      dplyr::mutate(model = model_label(fit$model))
+  })
+
+  ggplot2::ggplot() +
+    ggplot2::geom_point(
+      data = object$data,
+      ggplot2::aes(x = .data$dose, y = .data$response),
+      shape = 17,
+      size = 2.2
+    ) +
+    ggplot2::geom_line(
+      data = curves,
+      ggplot2::aes(x = .data$dose, y = .data$estimate, color = .data$model, linetype = .data$model),
+      linewidth = 0.8
+    ) +
+    ggplot2::scale_x_log10() +
+    ggplot2::scale_y_continuous(limits = c(0, 1)) +
+    ggplot2::labs(x = "Dose", y = "Probability of response", color = "Model", linetype = "Model") +
+    ggplot2::theme_minimal(base_size = 11)
+}

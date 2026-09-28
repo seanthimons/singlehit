@@ -85,6 +85,10 @@ test_that("the complete analysis workflow returns plot-ready results", {
   analysis_plot <- ggplot2::autoplot(analysis, points = 30)
   expect_s3_class(analysis_plot, "ggplot")
   expect_no_error(ggplot2::ggplot_build(analysis_plot))
+  overlay <- plot_model_overlay(analysis, points = 30)
+  expect_s3_class(overlay, "ggplot")
+  expect_length(overlay$layers, 2L)
+  expect_equal(nrow(ggplot2::ggplot_build(overlay)$data[[2L]]), 60L)
 })
 
 test_that("prediction curve builds bootstrap bands for the exact model", {
