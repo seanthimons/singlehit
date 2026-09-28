@@ -14,5 +14,5 @@ collect_bootstrap(job)
 A completed \code{qdr_bootstrap} tibble.
 }
 \description{
-Collect a non-blocking bootstrap job
+Shows mirai's progress indicator while waiting for replicates to finish.
 }

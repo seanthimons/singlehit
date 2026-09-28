@@ -190,7 +190,8 @@ separate binomial observations, so repeated doses across trials are preserved
 ### Parallel bootstraps (mirai)
 
 Bootstrap runs above 1,000 replicates automatically use mirai when it is
-installed. If no daemons are already configured, the package starts a temporary
+installed and show completion progress while results are collected. If no
+daemons are already configured, the package starts a temporary
 pool using 75% of the machine's detected physical cores and removes that pool
 after collecting the result. Supply `workers` to override that default:
 

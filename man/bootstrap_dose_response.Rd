@@ -42,5 +42,6 @@ A \code{qdr_bootstrap} tibble with one row per replicate.
 Generates grouped binomial bootstrap samples and refits the model. The
 \code{"observed"} resampling method preserves the legacy CAMRA behavior by using
 each dose group's observed response probability. The \code{"fitted"} method is a
-model-based parametric bootstrap.
+model-based parametric bootstrap. Mirai runs show progress as replicates
+finish.
 }
