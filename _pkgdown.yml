@@ -61,6 +61,7 @@ reference:
   - title: Plotting
     contents:
       - plot_dose_response
+      - plot_model_overlay
   - title: Data
     contents:
       - ward_rotavirus
