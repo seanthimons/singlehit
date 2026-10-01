@@ -123,14 +123,8 @@ plot_model_overlay(analysis) # all fitted models in one panel, without confidenc
 See `vignette("getting-started")` for a narrated start-to-finish walkthrough that
 interprets every output.
 
-The [Ward rotavirus model comparison](man/figures/ward-rotavirus-model-overlay.png)
+The [Ward rotavirus model comparison](https://seanthimons.github.io/singlehit/reference/figures/ward-rotavirus-model-overlay.png)
 shows the exponential and beta-Poisson curves with observed infection responses.
-
-The [cross-pathogen overview](man/figures/preferred-models-by-outcome-v3.png)
-shows 152 preferred models from the v3 QMRA workbook, colored by pathogen group
-and grouped into infection, illness, and death outcome panels. Four records have
-no supported preferred model. Regenerate it with
-`Rscript data-raw/plot-preferred-models.R workbook.xlsx man/figures/preferred-models-by-outcome-v3.png --facet-outcome`.
 
 ## Advanced usage
 
