@@ -11,7 +11,12 @@
 #' @param dose,positive,negative Optional source column names.
 #'
 #' @return A tibble with columns `dose`, `positive`, `negative`, `total`, and
-#'   `response`.
+#'   `response`, followed by any supplied metadata columns.
+#' @examples
+#' path <- system.file("extdata", "dose-response-example.csv", package = "singlehit")
+#' trial <- read_dose_response(path)
+#' trial
+#' # Identity columns survive import; response is a numeric proportion.
 #' @export
 read_dose_response <- function(path, delim = NULL, dose = NULL, positive = NULL, negative = NULL) {
   data <- readr::read_delim(
@@ -29,13 +34,33 @@ read_dose_response <- function(path, delim = NULL, dose = NULL, positive = NULL,
 #'
 #' Validates grouped binomial counts, combines rows with the same dose, and
 #' calculates total subjects and observed response probabilities.
+#' Metadata is optional: plain three-column inputs remain supported.
+#' Supplied `study_id`, `host`, `dose_unit`, and `endpoint` must each contain
+#' one non-missing, non-blank value throughout the input. `study_id` identifies
+#' one experiment. Split different experiments into separate data frames before
+#' fitting or testing poolability. Other metadata is preserved, but must agree
+#' between rows sharing a dose. `total` and numeric `response` are recalculated;
+#' use `endpoint` for the measured outcome, such as infection, illness, or death.
 #'
 #' @inheritParams read_dose_response
 #' @param data A data frame containing dose, positive-response count, and
 #'   negative-response count columns.
 #'
 #' @return A tibble with one row per dose and columns `dose`, `positive`,
-#'   `negative`, `total`, and `response`.
+#'   `negative`, `total`, and numeric `response`, followed by optional metadata.
+#' @examples
+#' # Plain three-column data still works.
+#' counts <- data.frame(dose = c(1, 10, 100), positive = c(1, 5, 9),
+#'                      negative = c(9, 5, 1))
+#' as_dose_response(counts)
+#' # Add optional experiment identity and descriptive metadata.
+#' counts$study_id <- "example_trial"
+#' counts$host <- "human"
+#' counts$dose_unit <- "FFU"
+#' counts$endpoint <- "infection"
+#' counts$citation <- "Synthetic teaching example"
+#' as_dose_response(counts)
+#' # Use endpoint for the outcome label, not the calculated response column.
 #' @export
 as_dose_response <- function(data, dose = NULL, positive = NULL, negative = NULL) {
   if (!is.data.frame(data)) {
@@ -83,18 +108,44 @@ as_dose_response <- function(data, dose = NULL, positive = NULL, negative = NULL
   )
   validate_dose_response_columns(standardized)
 
-  grouped <- standardized |>
-    dplyr::group_by(.data$dose) |>
+  metadata_names <- setdiff(source_names, c(selected, "total", "response"))
+  if (any(metadata_names %in% c("dose", "positive", "negative"))) {
+    stop("Metadata cannot use the reserved column names `dose`, `positive`, or `negative` when mapping other count columns.", call. = FALSE)
+  }
+  metadata <- tibble::as_tibble(data[metadata_names])
+  for (column in intersect(metadata_names, c("study_id", "host", "dose_unit", "endpoint"))) {
+    value <- metadata[[column]]
+    if (anyNA(value) || any(!nzchar(trimws(as.character(value)))) || dplyr::n_distinct(value) != 1L) {
+      stop(
+        sprintf("`%s` must contain one non-blank value per dataset. Split different experiments, hosts, units, or endpoints into separate data frames.", column),
+        call. = FALSE
+      )
+    }
+  }
+  standardized <- dplyr::bind_cols(standardized, metadata)
+  conflicts <- standardized %>%
+    dplyr::group_by(.data$dose) %>%
+    dplyr::summarise(dplyr::across(dplyr::all_of(metadata_names), dplyr::n_distinct), .groups = "drop")
+  for (column in metadata_names) {
+    if (any(conflicts[[column]] > 1L)) {
+      stop(sprintf("Metadata column `%s` disagrees between rows sharing a dose; resolve the values or split the datasets before coercion.", column), call. = FALSE)
+    }
+  }
+
+  grouped <- standardized %>%
+    dplyr::group_by(.data$dose) %>%
     dplyr::summarise(
       positive = sum(.data$positive),
       negative = sum(.data$negative),
+      dplyr::across(dplyr::all_of(metadata_names), dplyr::first),
       .groups = "drop"
-    ) |>
+    ) %>%
     dplyr::mutate(
       total = .data$positive + .data$negative,
       response = .data$positive / .data$total
-    ) |>
-    dplyr::arrange(.data$dose)
+    ) %>%
+    dplyr::arrange(.data$dose) %>%
+    dplyr::select(dplyr::all_of(c("dose", "positive", "negative", "total", "response", metadata_names)))
   validate_dose_response_groups(grouped)
   grouped
 }

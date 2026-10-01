@@ -57,6 +57,7 @@ reference:
   - title: Pooling multiple datasets
     contents:
       - poolability_test
+      - poolability_combinations
       - group_datasets
   - title: Plotting
     contents:

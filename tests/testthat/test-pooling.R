@@ -83,3 +83,44 @@ test_that("pooling validates its inputs", {
   grouped <- group_datasets(list(only = ward_fixture()))
   expect_true(all(grouped$group == 1L))
 })
+
+test_that("combination reporting covers every subset and preserves pooling results", {
+  trials <- list(A = ward_fixture(), B = ward_fixture(), C = ward_fixture())
+  result <- poolability_combinations(trials)
+  expect_equal(nrow(result), 8L)
+  expect_equal(unique(result$combination), c("A + B", "A + C", "B + C", "A + B + C"))
+  expect_equal(result$datasets[[1]], c("A", "B"))
+  expect_equal(result$datasets[[7]], c("A", "B", "C"))
+  expect_true(all(result$poolable))
+  expect_true(all(result$converged))
+  expect_equal(result[result$n_datasets == 3, names(poolability_test(trials))], poolability_test(trials))
+
+  odd <- data.frame(dose = c(1, 3, 10, 30), pos = c(0, 0, 1, 3), neg = c(10, 10, 9, 7))
+  mixed <- suppressWarnings(poolability_combinations(list(A = ward_fixture(), B = ward_fixture(), C = odd), models = "exponential"))
+  expect_true(mixed$poolable[mixed$combination == "A + B"])
+  expect_false(any(mixed$poolable[mixed$combination != "A + B"]))
+  expect_error(poolability_combinations(trials[1]), "between two")
+  expect_error(poolability_combinations(rep(trials, 3)), "got 9")
+  expect_error(poolability_combinations(trials, max_datasets = NA_real_), "whole number")
+  expect_error(poolability_combinations(trials, max_datasets = 2.5), "whole number")
+  expect_error(poolability_combinations(trials, models = "invalid"), "non-empty subset")
+  expect_error(poolability_combinations(trials, alpha = 1), "between zero and one")
+})
+
+
+test_that("bundled synthetic collection demonstrates passing and failing combinations", {
+  path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
+  raw <- readr::read_csv(path, show_col_types = FALSE)
+  trials <- split(raw, raw$study_id)
+  report <- poolability_combinations(trials)
+  expect_equal(nrow(report), 8L)
+  expect_true(all(report$converged))
+  expect_true(all(report$poolable[report$combination == "A + B"]))
+  expect_false(any(report$poolable[report$combination != "A + B"]))
+  groups <- group_datasets(trials, method = "exhaustive")
+  for (model in unique(groups$model)) {
+    g <- groups[groups$model == model, ]
+    expect_equal(g$group[g$dataset == "A"], g$group[g$dataset == "B"])
+    expect_false(g$group[g$dataset == "A"] == g$group[g$dataset == "C"])
+  }
+})

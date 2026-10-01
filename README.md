@@ -96,6 +96,56 @@ ward_rotavirus
 as_dose_response(ward_rotavirus) # standardized: dose, positive, negative, total, response
 ```
 
+### Add experiment details
+
+The three count columns remain sufficient for a single dataset. To keep track
+of your experiment, add `study_id`, `host`, `dose_unit`, and `endpoint`.
+`study_id` identifies one experiment, not a publication. `endpoint` names the
+measured outcome, such as infection, illness, or death; `response` is the
+calculated proportion of subjects with that outcome.
+
+Start with the [blank CSV template](https://raw.githubusercontent.com/seanthimons/singlehit/main/inst/extdata/dose-response-template.csv)
+or the [completed example](https://raw.githubusercontent.com/seanthimons/singlehit/main/inst/extdata/dose-response-example.csv).
+The example counts are illustrative. Open the template in a spreadsheet, enter
+one row per dose group, and save it as CSV. Enter dose and counts as numbers,
+without units or percent signs. Repeat the experiment details on every row.
+
+```r
+# Try the bundled example before reading your own CSV.
+example_path <- system.file("extdata", "dose-response-example.csv", package = "singlehit")
+trial <- read_dose_response(example_path)
+trial
+
+# For your own data:
+# trial <- read_dose_response("my_trial.csv")
+# Or, if it is already a data frame:
+# trial <- as_dose_response(my_data)
+```
+
+Metadata columns are optional and are preserved through coercion and fitting.
+When supplied, each identity column must have one non-blank value throughout
+the dataset. Keep different experiments, hosts, dose units, and endpoints in
+separate tables. Additional columns, such as citation or exposure route, are
+also preserved; values must agree between rows sharing a dose before their
+counts can be summed. `total` and numeric `response` are always recalculated.
+
+For multiple experiments, keep the pathogen name once alongside the collection:
+
+```r
+trial_a <- read_dose_response("trial_a.csv")
+trial_b <- read_dose_response("trial_b.csv")
+collection <- list(
+  pathogen = "Rotavirus",
+  datasets = list(trial_a = trial_a, trial_b = trial_b)
+)
+poolability_test(collection$datasets)
+```
+
+This list is an organizational convention, not a validated collection object.
+Check that hosts, dose units, and endpoints match before testing poolability;
+the current pooling functions do not enforce those checks. Recording matching
+metadata does not by itself establish that experiments should be pooled.
+
 ## Example
 
 ```r
@@ -174,12 +224,71 @@ significantly worse than when fit separately are kept distinct.
 trials <- list(trial_a = data_a, trial_b = data_b, trial_c = data_c)
 
 poolability_test(trials) # are they poolable? (one row per model)
+poolability_combinations(trials) # each pair and larger combination, per model
 group_datasets(trials)   # which trials group together (per model)
 ```
+
+To see which combinations pass or fail, use `poolability_combinations()`.
+For three trials it reports A+B, A+C, B+C, and A+B+C. `combination` identifies
+the trials, `model` identifies the fitted model, `p_value` reports the test
+result, and `poolable` is TRUE when the pooled fit does not worsen
+significantly at the chosen `alpha`. Inspect `converged` before trusting a
+result. The `datasets` list column retains the exact trial names.
+
+The report includes overlapping combinations; it does not select a final
+grouping. `group_datasets(trials, method = "exhaustive")` searches all ways to
+divide the trials into non-overlapping groups and selects one grouping per
+model. The default grouping method instead merges compatible groups greedily.
+Combination reporting and exhaustive grouping both default to at most six
+trials because their searches grow rapidly. These are exploratory tests without
+multiple-testing adjustment; passing a test does not prove equivalence.
+Compare only experiments with matching hosts, units, and endpoints.
 
 Datasets are combined by **stacking** — each trial's dose groups are kept as
 separate binomial observations, so repeated doses across trials are preserved
 (matching the QMRA-wiki pooled-experiment convention), rather than summed.
+
+### Try pooling with synthetic data
+
+The bundled `pooling-example.csv` contains artificial counts for three
+experiments, A, B, and C, with 100 subjects at each of four doses. A and B have
+similar curves; C has a much lower response. These are teaching data, not
+observations from a real pathogen.
+
+```r
+path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
+raw <- readr::read_csv(path, show_col_types = FALSE)
+collection <- list(
+  pathogen = "Synthetic example",
+  datasets = split(raw, raw$study_id)
+)
+report <- poolability_combinations(collection$datasets)
+report[c("combination", "model", "p_value", "poolable", "converged")]
+group_datasets(collection$datasets, method = "exhaustive")
+```
+
+The combination report prints:
+
+```text
+# A tibble: 8 × 5
+  combination model         p_value poolable converged
+  <chr>       <chr>           <dbl> <lgl>    <lgl>
+1 A + B       exponential  9.40e- 1 TRUE     TRUE
+2 A + B       beta_poisson 9.25e- 1 TRUE     TRUE
+3 A + C       exponential  2.50e-66 FALSE    TRUE
+4 A + C       beta_poisson 9.60e-62 FALSE    TRUE
+5 B + C       exponential  4.06e-67 FALSE    TRUE
+6 B + C       beta_poisson 4.31e-62 FALSE    TRUE
+7 A + B + C   exponential  5.24e-87 FALSE    TRUE
+8 A + B + C   beta_poisson 1.19e-79 FALSE    TRUE
+```
+
+Read the multi-experiment CSV before splitting by `study_id`. Passing the whole
+file to `read_dose_response()` would correctly reject mixed experiment IDs.
+At `alpha = 0.05`, A+B passes for both models, while A+C, B+C, and A+B+C fail.
+All fits converge, and exhaustive grouping puts A and B together with C separate.
+A and B are candidates for a shared fit; keep C separate. This pooling decision
+does not establish adequate absolute model fit or create a pooled analysis.
 
 ### Parallel bootstraps (mirai)
 

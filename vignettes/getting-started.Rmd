@@ -49,6 +49,31 @@ identical(ward, ward_from_file)
 
 Both routes produce the standardized `dose · positive · negative · total · response` tibble, where `total = positive + negative` and `response = positive / total`. Column names are auto-detected case- and punctuation-insensitively (`pos`, `positive_response`, etc.); override detection with `as_dose_response(data, dose =, positive =, negative =)`. Rows sharing a dose are summed. Fitting requires **at least 3 distinct doses** and **more than 1 total positive response** — non-conforming data is rejected with an explanatory error.
 
+## Keep experiment details
+
+A plain three-column data frame remains valid. You can also add `study_id`,
+`host`, `dose_unit`, and `endpoint`. Each supplied identity column must have one
+non-blank value across the table. `study_id` means an individual experiment;
+`endpoint` describes what was counted, while numeric `response` remains the
+observed proportion. Split experiments with different identities into separate
+tables before coercion.
+
+```{r metadata-example}
+example_path <- system.file("extdata", "dose-response-example.csv", package = "singlehit")
+example_trial <- read_dose_response(example_path)
+example_trial
+```
+
+These example counts are illustrative. For your own experiment, find the blank
+CSV template with `system.file("extdata", "dose-response-template.csv", package = "singlehit")`,
+copy it into your working folder, and fill it in with a spreadsheet editor.
+Repeat experiment details on every row, enter counts and doses as numbers, and
+save as CSV. Read it with `read_dose_response("my_trial.csv")`.
+
+Additional metadata columns are preserved. Duplicate doses are combined only
+when their metadata agrees; conflicting values produce an error naming the
+column. `total` and `response` are recalculated from the counts.
+
 ## Run
 
 `analyze_dose_response()` does everything in one call: trend test, model fits, diagnostics, comparison, assessment, and bootstrap uncertainty. A fixed `seed` makes the bootstrap reproducible.
@@ -162,3 +187,74 @@ ci[ci$term == "ed50", ]
 ```
 
 That single row — the median infectious dose of the recommended model with its 95% percentile interval — is the deliverable: *the dose at which half of exposed subjects are expected to be infected, with a defensible bound on how sure we are.*
+
+## Which experiments can be pooled?
+
+Use the bundled synthetic collection to try pooling before using your own
+studies. It contains three artificial experiments, A, B, and C, with the same
+host, dose unit, and infection endpoint. Each experiment has four doses and
+100 subjects per dose. A and B have similar curves; C has a lower response.
+These are teaching data, not observations from a real pathogen.
+
+### Read and split the collection
+
+```{r pooling-import}
+pooling_path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
+raw_trials <- readr::read_csv(pooling_path, show_col_types = FALSE)
+collection <- list(
+  pathogen = "Synthetic example",
+  datasets = split(raw_trials, raw_trials$study_id)
+)
+names(collection$datasets)
+```
+
+The output names A, B, and C. Keep the pathogen name once on the collection.
+Split by `study_id` before coercion because it identifies an individual
+experiment. `read_dose_response()` handles one experiment at a time and rejects
+mixed identity values. Check that hosts, units, and endpoints match before
+pooling; the current pooling functions do not enforce that comparison.
+
+### Inspect every combination
+
+```{r pooling-combinations}
+report <- poolability_combinations(collection$datasets)
+report[c("combination", "model", "p_value", "poolable", "converged")]
+```
+
+Each row tests one combination under one model. At the default `alpha = 0.05`,
+A+B passes under both models, with p-values around 0.94 and 0.93. Every
+combination containing C fails. All fits converged, so this example has no
+optimizer failure flags.
+
+`poolable = TRUE` means the test did not detect a significantly worse fit when
+sharing one parameter set. It does not prove equivalence or adequate absolute
+model fit. A passing pair can fail after another experiment is added, so read
+the row for the complete combination you plan to pool. These are exploratory
+p-values without multiple-testing adjustment.
+
+### Select non-overlapping groups
+
+```{r pooling-groups}
+groups <- group_datasets(collection$datasets, method = "exhaustive")
+groups
+```
+
+A and B share group 1; C is in group 2 for both models. Group numbers are labels,
+not rankings. The exhaustive method considers all divisions into groups and
+returns one selected grouping per model. The default agglomerative method
+instead merges compatible groups greedily. Exhaustive grouping and combination
+reporting both default to a maximum of six experiments.
+
+You can also inspect just the proposed A+B pool:
+
+```{r pooling-selected-pair}
+pair <- poolability_test(collection$datasets[c("A", "B")])
+pair[c("model", "p_value", "poolable", "converged", "conclusion")]
+```
+
+For this example, A and B are candidates for a shared fit; keep C separate.
+The report and grouping functions test poolability and return assignments.
+They do not create a pooled analysis or establish goodness of fit. A later
+pooled fit must preserve separate trial observations at repeated doses;
+simply coercing stacked trials would aggregate those observations or reject
+mixed identities.

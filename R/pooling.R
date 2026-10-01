@@ -21,6 +21,18 @@
 #'   `deviance_pooled`, `deviance_unpooled`, `lrt_statistic`, `df`,
 #'   `chi_square_critical`, `p_value`, `poolable`, `converged`, and a
 #'   human-readable `conclusion`.
+#' @details Check that hosts, dose units, and endpoints match before testing.
+#' The current pooling functions do not enforce metadata compatibility.
+#' `poolable = TRUE` means the test did not detect a significantly worse pooled
+#' fit at `alpha`; it does not prove equivalence or adequate absolute fit.
+#' Inspect `converged` before interpreting the result.
+#' @examples
+#' path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
+#' raw <- readr::read_csv(path, show_col_types = FALSE)
+#' trials <- split(raw, raw$study_id)
+#' result <- poolability_test(trials[c("A", "B")])
+#' result[c("model", "p_value", "poolable", "converged", "conclusion")]
+#' # A and B pass under both models. This test covers only the supplied set.
 #' @export
 poolability_test <- function(datasets, models = c("exponential", "beta_poisson"), alpha = 0.05) {
   standardized <- standardize_datasets(datasets)
@@ -69,11 +81,70 @@ poolability_test <- function(datasets, models = c("exponential", "beta_poisson")
   result
 }
 
+#' Report poolability for every combination of datasets
+#'
+#' Tests every subset containing at least two datasets, separately for each
+#' model. For three datasets A, B, and C, reports A+B, A+C, B+C, and A+B+C.
+#' Singletons need no pooling test. Results describe candidate combinations;
+#' overlapping combinations are allowed and no final grouping is selected.
+#' These are exploratory, unadjusted tests. A passing test does not establish
+#' equivalence, and results with `converged = FALSE` may be unreliable.
+#'
+#' @inheritParams poolability_test
+#' @param max_datasets Maximum collection size, default six. The number of
+#'   combinations grows exponentially (`2^n - n - 1`).
+#' @return A tibble with `combination` (a readable label), `datasets` (a list
+#'   column of exact dataset names), and all columns from [poolability_test()].
+#'   Each row describes one combination under one model.
+#' @details A passing pair need not remain poolable after another dataset is
+#' added. Inspect the row for the complete combination you intend to pool.
+#' Check metadata compatibility before testing; it is not enforced here.
+#' Use [group_datasets()] to choose non-overlapping groups from these trials.
+#' @examples
+#' path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
+#' raw <- readr::read_csv(path, show_col_types = FALSE)
+#' trials <- split(raw, raw$study_id)
+#' report <- poolability_combinations(trials)
+#' report[c("combination", "model", "p_value", "poolable", "converged")]
+#' # A+B passes; A+C, B+C, and A+B+C fail under both models.
+#' # Keep C separate when considering A and B for pooling.
+#' @export
+poolability_combinations <- function(
+  datasets,
+  models = c("exponential", "beta_poisson"),
+  alpha = 0.05,
+  max_datasets = 6L
+) {
+  standardized <- standardize_datasets(datasets)
+  n <- length(standardized)
+  if (!is.numeric(max_datasets) || length(max_datasets) != 1L ||
+      !is.finite(max_datasets) || max_datasets < 2 || max_datasets != floor(max_datasets)) {
+    stop("`max_datasets` must be a whole number of at least two.", call. = FALSE)
+  }
+  if (n < 2L || n > max_datasets) {
+    stop(sprintf("Combination reporting requires between two and %d datasets (got %d).", max_datasets, n), call. = FALSE)
+  }
+  models <- validate_model_set(models)
+  validate_alpha(alpha)
+  # ponytail: refit subsets up to the collection limit; cache fits if larger collections are needed.
+  subsets <- unlist(lapply(2:n, function(size) utils::combn(n, size, simplify = FALSE)), recursive = FALSE)
+  purrr::map_dfr(subsets, function(idx) {
+    labels <- names(standardized)[idx]
+    result <- poolability_test(standardized[idx], models = models, alpha = alpha)
+    dplyr::bind_cols(
+      tibble::tibble(combination = rep(paste(labels, collapse = " + "), nrow(result)),
+                     datasets = rep(list(labels), nrow(result))),
+      result
+    )
+  })
+}
+
 #' Group dose-response datasets into mutually poolable sets
 #'
 #' Assigns datasets to groups such that the datasets within a group are
 #' statistically poolable (via the [poolability_test()] likelihood-ratio test)
-#' and datasets in different groups are not. Grouping is performed per model,
+#' with one selected non-overlapping grouping. This does not imply that every
+#' cross-group subset fails the pooling test. Grouping is performed per model,
 #' because poolability can differ between the exponential and beta-Poisson
 #' models.
 #'
@@ -89,6 +160,18 @@ poolability_test <- function(datasets, models = c("exponential", "beta_poisson")
 #' @return A long tibble with columns `dataset`, `model`, and integer `group`.
 #'   The per-model matrix of pairwise pooling p-values is attached as the
 #'   `"pairwise"` attribute.
+#' @details Group numbers are labels within a model, not rankings. This function
+#' returns assignments, not pooled datasets or fitted models. Use
+#' [poolability_combinations()] to inspect overlapping candidate combinations.
+#' Check metadata compatibility before grouping; it is not enforced here.
+#' @examples
+#' path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
+#' raw <- readr::read_csv(path, show_col_types = FALSE)
+#' trials <- split(raw, raw$study_id)
+#' groups <- group_datasets(trials, method = "exhaustive")
+#' groups
+#' # For both models, A and B share group 1; C is in group 2.
+#' attr(groups, "pairwise")
 #' @export
 group_datasets <- function(
   datasets,
