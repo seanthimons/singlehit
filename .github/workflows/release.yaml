@@ -7,13 +7,18 @@ on:
       - .github/workflows/release.yaml
   workflow_dispatch:
     inputs:
+      release-mode:
+        description: Prepare a release PR or publish the merged version
+        type: choice
+        options: [prepare-pr, publish]
+        default: prepare-pr
       version-type:
-        description: Version component to bump
+        description: Version component to bump during PR preparation
         type: choice
         options: [patch, minor, major, dev]
         default: patch
       dry-run:
-        description: Build and check only; do not push or publish
+        description: Check only; do not push, open a PR, or publish
         type: boolean
         default: true
 
@@ -27,8 +32,9 @@ jobs:
     name: Release
     permissions:
       contents: write
-    uses: seanthimons/baseline/.github/workflows/release-r-package.yaml@c99a0a60eed152a08d1e34841d45573fef812af2 # v1.2.0
+    uses: seanthimons/baseline/.github/workflows/release-r-package.yaml@733a6e4554870ab2fa8dd7495fa67bea029bb38c # v1.3.0
     with:
+      release-mode: ${{ inputs.release-mode || 'prepare-pr' }}
       version-type: ${{ inputs.version-type || 'patch' }}
       notes-mode: autonewsmd
       dry-run: ${{ github.event_name == 'pull_request' || inputs.dry-run }}
