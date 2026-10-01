@@ -26,7 +26,8 @@ bootstrap_dose_response(
 \item{backend}{Execution backend. \code{"auto"} uses mirai above 1,000 replicates
 when it is installed and otherwise runs sequentially. \code{"sequential"} runs
 refits in the current R process. \code{"mirai"} distributes refits to existing
-daemons or a temporary local pool.}
+daemons or a temporary local pool. When loaded with \code{pkgload::load_all()},
+the same checkout is loaded on each worker.}
 
 \item{compute}{Optional mirai compute profile name. Ignored by the sequential
 backend.}
@@ -42,6 +43,6 @@ A \code{qdr_bootstrap} tibble with one row per replicate.
 Generates grouped binomial bootstrap samples and refits the model. The
 \code{"observed"} resampling method preserves the legacy CAMRA behavior by using
 each dose group's observed response probability. The \code{"fitted"} method is a
-model-based parametric bootstrap. Mirai runs show progress as replicates
+model-based parametric bootstrap. Mirai runs show progress as batches
 finish.
 }

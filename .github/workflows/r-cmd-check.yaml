@@ -3,62 +3,53 @@ name: R-CMD-check
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "NEWS.md"
-      - "**/*.md"
   pull_request:
-    branches: [main]
-    paths-ignore:
-      - "NEWS.md"
-      - "**/*.md"
   workflow_dispatch:
-
-permissions:
-  contents: read
 
 concurrency:
   group: r-cmd-check-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   r-cmd-check:
-    if: github.actor != 'github-actions[bot]'
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
-    runs-on: ${{ matrix.config.os }}
+    name: R CMD check
+    uses: seanthimons/baseline/.github/workflows/r-cmd-check.yaml@733a6e4554870ab2fa8dd7495fa67bea029bb38c # v1.3.0
+    with:
+      matrix: >-
+        [{"os":"ubuntu-latest","r":"release"},
+         {"os":"windows-latest","r":"release"},
+         {"os":"macos-latest","r":"release"},
+         {"os":"ubuntu-latest","r":"oldrel-1"}]
 
-    strategy:
-      fail-fast: false
-      matrix:
-        config:
-          - { os: ubuntu-latest, r: release }
-          - { os: windows-latest, r: release }
-          - { os: macos-latest, r: release }
-
+  dev-bootstrap:
+    name: Development-loaded mirai bootstrap (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
     env:
       GITHUB_PAT: ${{ github.token }}
-      R_KEEP_PKG_SOURCE: yes
       R_PROFILE_USER: /dev/null
-
+      RENV_CONFIG_AUTOLOADER_ENABLED: "false"
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up R
-        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
-          r-version: ${{ matrix.config.r }}
           use-public-rspm: true
-
-      - name: Set up pandoc
-        uses: r-lib/actions/setup-pandoc@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
-
       - name: Install package dependencies
-        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
-          extra-packages: any::rcmdcheck
           needs: check
-
-      - name: Check package
-        uses: r-lib/actions/check-r-package@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
-        with:
-          upload-snapshots: true
+      - name: Check development-loaded mirai bootstrap
+        shell: Rscript {0}
+        run: |
+          pkgload::load_all(".", quiet = TRUE)
+          stopifnot(pkgload::is_dev_package("singlehit"))
+          fit <- fit_dose_response(ward_rotavirus, "beta_poisson")
+          result <- bootstrap_dose_response(fit, times = 2L, seed = 42L, backend = "mirai", workers = 1L)
+          stopifnot(nrow(result) == 2L, all(result$converged))

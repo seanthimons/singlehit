@@ -17,7 +17,7 @@ test_that("mirai and sequential backends use identical bootstrap samples", {
   skip_if_not_installed("mirai", minimum_version = "2.5.0")
   skip_if(Sys.getenv("_R_CHECK_PACKAGE_NAME_") == "", "requires an installed package namespace")
   fit <- fit_dose_response(ward_fixture(), "beta_poisson")
-  sequential <- bootstrap_dose_response(fit, times = 8, seed = 42)
+  sequential <- bootstrap_dose_response(fit, times = 21, seed = 42)
 
   mirai::daemons(1, dispatcher = FALSE)
   on.exit(
@@ -27,7 +27,7 @@ test_that("mirai and sequential backends use identical bootstrap samples", {
     },
     add = TRUE
   )
-  parallel <- bootstrap_dose_response(fit, times = 8, seed = 42, backend = "mirai")
+  parallel <- bootstrap_dose_response(fit, times = 21, seed = 42, backend = "mirai")
 
   expect_identical(attr(parallel, "backend"), "mirai")
   expect_equal(lapply(parallel, identity), lapply(sequential, identity))

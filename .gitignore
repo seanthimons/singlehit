@@ -4,6 +4,8 @@
 !/.beans
 !/.github
 !/.gitignore
+!/.gitattributes
+!/.gitleaks.toml
 !/.Rbuildignore
 
 # Output files from R CMD build
