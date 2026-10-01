@@ -58,9 +58,12 @@ version tags. Keep the build artifact until publication succeeds.
 ## Pages cutover
 
 Before the first merged Actions deployment, change Settings > Pages > Build
-and deployment > Source to **GitHub Actions**. After the first successful
+and deployment > Source to **GitHub Actions**. In the `github-pages` environment,
+allow deployments from branch `main` and tags `v*` so both push and published
+release triggers can deploy. After the first successful
 deployment, verify <https://seanthimons.github.io/singlehit/> and only then
-delete the old `gh-pages` branch. PR runs validate the build without deploying.
+delete the old `gh-pages` branch and its deployment policy. PR runs validate
+the build without deploying.
 
 ## Checks and remaining verification
 
