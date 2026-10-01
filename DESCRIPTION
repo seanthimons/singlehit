@@ -1,6 +1,6 @@
 Package: singlehit
 Title: Mechanistic Dose-Response Models for Microbial Risk Assessment
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: c(
     person("Sean", "Thimons", email = "thimons.sean@gmail.com", role = c("aut", "cre")),
     person("Mark H.", "Weir", role = "ctb"),
