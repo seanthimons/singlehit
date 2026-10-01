@@ -1,6 +1,3 @@
-
-
-
 ## singlehit v0.2.0 (2026-10-01)
 
 #### New features
@@ -28,11 +25,6 @@
   ([49d7858](https://github.com/seanthimons/singlehit/tree/49d78589eed0fc1f9e08293b040a7309ccbce96c))
 - index model overlay reference
   ([574f8e8](https://github.com/seanthimons/singlehit/tree/574f8e8df9b0c7bd126b565a13f6dd315c6bc55e))
-
-#### Other changes
-
-- release v0.2.0
-  ([165f457](https://github.com/seanthimons/singlehit/tree/165f457a02e27cfbae540d949dec4b5542c2a486))
 
 Full set of changes:
 [`v0.1.0...v0.2.0`](https://github.com/seanthimons/singlehit/compare/v0.1.0...v0.2.0)
