@@ -4,113 +4,17 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
-concurrency:
-  group: publish-rolling-package
-  cancel-in-progress: false
-
+# The reusable workflow serializes publication by rolling tag.
 jobs:
-  publish:
-    runs-on: ubuntu-latest
-
-    env:
-      GH_TOKEN: ${{ github.token }}
-      ROLLING_TAG: package-latest
-      R_PROFILE_USER: /dev/null
-
-    steps:
-      - name: Checkout main
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          ref: main
-
-      - name: Set up R
-        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
-        with:
-          r-version: release
-          use-public-rspm: true
-
-      - name: Set up pandoc
-        uses: r-lib/actions/setup-pandoc@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
-
-      - name: Install package dependencies
-        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
-
-      - name: Read package metadata
-        id: metadata
-        shell: bash
-        run: |
-          package="$(Rscript -e "cat(read.dcf('DESCRIPTION', fields = 'Package')[1, 'Package'])")"
-          version="$(Rscript -e "cat(read.dcf('DESCRIPTION', fields = 'Version')[1, 'Version'])")"
-          commit="$(git rev-parse HEAD)"
-          echo "package=$package" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "commit=$commit" >> "$GITHUB_OUTPUT"
-
-      - name: Build source package
-        id: build
-        env:
-          PACKAGE: ${{ steps.metadata.outputs.package }}
-          VERSION: ${{ steps.metadata.outputs.version }}
-        shell: bash
-        run: |
-          R CMD build .
-          tarball="${PACKAGE}_${VERSION}.tar.gz"
-          test -f "$tarball"
-          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
-
-      - name: Ensure rolling prerelease exists
-        env:
-          COMMIT: ${{ steps.metadata.outputs.commit }}
-          PACKAGE: ${{ steps.metadata.outputs.package }}
-        shell: bash
-        run: |
-          if gh release view "$ROLLING_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            is_prerelease="$(gh release view "$ROLLING_TAG" \
-              --repo "${{ github.repository }}" \
-              --json isPrerelease \
-              --jq '.isPrerelease')"
-            if [ "$is_prerelease" != "true" ]; then
-              echo "::error::Release $ROLLING_TAG exists but is not a prerelease."
-              exit 1
-            fi
-            gh api \
-              --method PATCH \
-              "repos/${{ github.repository }}/git/refs/tags/$ROLLING_TAG" \
-              -f "sha=$COMMIT" \
-              -F force=true >/dev/null
-          else
-            gh release create "$ROLLING_TAG" \
-              --repo "${{ github.repository }}" \
-              --target "$COMMIT" \
-              --title "$PACKAGE rolling package build" \
-              --notes "Rolling prerelease for source packages built from main." \
-              --prerelease
-          fi
-
-      - name: Upload source package to rolling prerelease
-        env:
-          COMMIT: ${{ steps.metadata.outputs.commit }}
-          PACKAGE: ${{ steps.metadata.outputs.package }}
-          TARBALL: ${{ steps.build.outputs.tarball }}
-        shell: bash
-        run: |
-          while IFS= read -r asset; do
-            if [[ "$asset" == "${PACKAGE}_"*.tar.gz && "$asset" != "$TARBALL" ]]; then
-              gh release delete-asset "$ROLLING_TAG" "$asset" \
-                --repo "${{ github.repository }}" \
-                --yes
-            fi
-          done < <(gh release view "$ROLLING_TAG" \
-            --repo "${{ github.repository }}" \
-            --json assets \
-            --jq '.assets[].name')
-          gh release upload "$ROLLING_TAG" "$TARBALL" \
-            --repo "${{ github.repository }}" \
-            --clobber
-          gh release edit "$ROLLING_TAG" \
-            --repo "${{ github.repository }}" \
-            --title "$PACKAGE rolling package build" \
-            --notes "Rolling prerelease source package built from main at commit $COMMIT." \
-            --prerelease
+  rolling:
+    name: Rolling prerelease
+    permissions:
+      contents: write
+    uses: seanthimons/baseline/.github/workflows/rolling-prerelease.yaml@c99a0a60eed152a08d1e34841d45573fef812af2 # v1.2.0
+    with:
+      ref: main
+      tag: package-latest
+      build-binaries: false
+      require-dev-version: false

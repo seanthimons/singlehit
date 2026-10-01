@@ -1,0 +1,19 @@
+name: Lint workflows
+
+on:
+  push:
+    paths: ['.github/**']
+  pull_request:
+    paths: ['.github/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-workflows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint workflows
+    uses: seanthimons/baseline/.github/workflows/lint-workflows.yaml@c99a0a60eed152a08d1e34841d45573fef812af2 # v1.2.0
