@@ -23,3 +23,33 @@ jobs:
          {"os":"windows-latest","r":"release"},
          {"os":"macos-latest","r":"release"},
          {"os":"ubuntu-latest","r":"oldrel-1"}]
+
+  dev-bootstrap:
+    name: Development-loaded mirai bootstrap (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      GITHUB_PAT: ${{ github.token }}
+      R_PROFILE_USER: /dev/null
+      RENV_CONFIG_AUTOLOADER_ENABLED: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up R
+        uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
+        with:
+          use-public-rspm: true
+      - name: Install package dependencies
+        uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
+        with:
+          needs: check
+      - name: Check development-loaded mirai bootstrap
+        shell: Rscript {0}
+        run: |
+          pkgload::load_all(".", quiet = TRUE)
+          stopifnot(pkgload::is_dev_package("singlehit"))
+          fit <- fit_dose_response(ward_rotavirus, "beta_poisson")
+          result <- bootstrap_dose_response(fit, times = 2L, seed = 42L, backend = "mirai", workers = 1L)
+          stopifnot(nrow(result) == 2L, all(result$converged))

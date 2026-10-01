@@ -183,6 +183,9 @@ separate binomial observations, so repeated doses across trials are preserved
 
 ### Parallel bootstraps (mirai)
 
+Mirai also works after `devtools::load_all()`: local workers load the same
+checkout before starting the bootstrap.
+
 Bootstrap runs above 1,000 replicates automatically use mirai when it is
 installed and show completion progress while results are collected. If no
 daemons are already configured, the package starts a temporary

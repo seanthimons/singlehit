@@ -9,7 +9,7 @@ grouped weekly updates with a `ci:` commit prefix.
 | `gitleaks.yaml` | Scan pushes, PRs, and repository history every Monday at 06:43 UTC, including bot commits. |
 | `commit-lint.yaml` | Check PR commit subjects, PR titles, and Conventional Branch names. Scopes use ASCII letters, numbers, and underscores. |
 | `lint-workflows.yaml` | Run actionlint and zizmor when `.github/` changes. |
-| `r-cmd-check.yaml` | Check release R on Linux, Windows, and macOS, plus `oldrel-1` on Linux. |
+| `r-cmd-check.yaml` | Check release R on Linux, Windows, and macOS, plus `oldrel-1` on Linux; also test development-loaded mirai bootstraps on Windows. |
 | `test-coverage.yaml` | Report coverage in the job summary and upload `cobertura.xml`; Codecov is disabled. |
 | `pkgdown.yaml` | Build PRs with Contents read permission; deploy non-PR builds through GitHub Pages artifacts. |
 | `build-package.yaml` | Manually build and upload a source package without publishing. |
