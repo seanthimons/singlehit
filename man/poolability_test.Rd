@@ -37,4 +37,18 @@ than the separate models, i.e. one shared parameter set is adequate.
 Datasets are combined by stacking their rows (each dataset's dose groups are
 kept as separate binomial observations); they are not aggregated, so repeated
 doses across datasets are preserved.
+
+Check that hosts, dose units, and endpoints match before testing.
+The current pooling functions do not enforce metadata compatibility.
+\code{poolable = TRUE} means the test did not detect a significantly worse pooled
+fit at \code{alpha}; it does not prove equivalence or adequate absolute fit.
+Inspect \code{converged} before interpreting the result.
+}
+\examples{
+path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
+raw <- readr::read_csv(path, show_col_types = FALSE)
+trials <- split(raw, raw$study_id)
+result <- poolability_test(trials[c("A", "B")])
+result[c("model", "p_value", "poolable", "converged", "conclusion")]
+# A and B pass under both models. This test covers only the supplied set.
 }

@@ -22,11 +22,17 @@ detect it.}
 }
 \value{
 A tibble with columns \code{dose}, \code{positive}, \code{negative}, \code{total}, and
-\code{response}.
+\code{response}, followed by any supplied metadata columns.
 }
 \description{
 Reads a delimited text file and standardizes its columns for modeling.
 Common positive-response names (\code{positive}, \code{pos}, and \code{positive_response})
 and negative-response names (\code{negative}, \code{neg}, and \code{negative_response}) are
 detected automatically.
+}
+\examples{
+path <- system.file("extdata", "dose-response-example.csv", package = "singlehit")
+trial <- read_dose_response(path)
+trial
+# Identity columns survive import; response is a numeric proportion.
 }

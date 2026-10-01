@@ -69,3 +69,45 @@ test_that("invalid grouped counts fail before fitting", {
     "detect the positive"
   )
 })
+
+
+test_that("optional experiment metadata survives coercion, import, and fitting", {
+  input <- data.frame(
+    dose = c(1, 1, 10, 100), pos = c(1, 2, 4, 3), neg = c(3, 2, 0, 1),
+    study_id = "trial_a", host = "human", dose_unit = "FFU",
+    endpoint = "infection", citation = "Example study",
+    total = 999, response = 999
+  )
+  result <- as_dose_response(input)
+  expect_equal(result$positive, c(3, 4, 3))
+  expect_equal(result$total, c(8, 4, 4))
+  expect_equal(result$response, result$positive / result$total)
+  expect_equal(result$study_id, rep("trial_a", 3))
+  expect_equal(result$citation, rep("Example study", 3))
+  expect_identical(as_dose_response(result), result)
+  expect_identical(fit_dose_response(result, "exponential")$data, result)
+  path <- tempfile(fileext = ".csv")
+  on.exit(unlink(path))
+  readr::write_csv(input, path)
+  expect_equal(read_dose_response(path), result)
+
+  for (column in c("study_id", "host", "dose_unit", "endpoint")) {
+    mixed <- input
+    mixed[[column]][2] <- "different"
+    expect_error(as_dose_response(mixed), column)
+    mixed[[column]][2] <- NA_character_
+    expect_error(as_dose_response(mixed), column)
+    mixed[[column]][2] <- " "
+    expect_error(as_dose_response(mixed), column)
+  }
+  input$citation[2] <- "Different study"
+  expect_error(as_dose_response(input), "citation.*disagrees")
+  input <- data.frame(dose = 1:3, pos = c(1, 2, 3), neg = 3, positive = "metadata")
+  expect_error(as_dose_response(input, positive = "pos"), "reserved column names")
+  example_path <- system.file("extdata", "dose-response-example.csv", package = "singlehit")
+  example <- read_dose_response(example_path)
+  expect_equal(example$study_id, rep("example_trial", 3))
+  template_path <- system.file("extdata", "dose-response-template.csv", package = "singlehit")
+  expect_identical(names(readr::read_csv(template_path, show_col_types = FALSE)),
+                   c("study_id", "host", "dose_unit", "endpoint", "dose", "positive", "negative"))
+})

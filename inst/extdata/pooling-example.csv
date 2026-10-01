@@ -1,0 +1,13 @@
+study_id,host,dose_unit,endpoint,dose,positive,negative
+A,human,organisms,infection,1,10,90
+A,human,organisms,infection,3,26,74
+A,human,organisms,infection,10,63,37
+A,human,organisms,infection,30,95,5
+B,human,organisms,infection,1,9,91
+B,human,organisms,infection,3,28,72
+B,human,organisms,infection,10,65,35
+B,human,organisms,infection,30,94,6
+C,human,organisms,infection,1,0,100
+C,human,organisms,infection,3,2,98
+C,human,organisms,infection,10,5,95
+C,human,organisms,infection,30,14,86

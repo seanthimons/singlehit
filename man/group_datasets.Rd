@@ -39,7 +39,23 @@ The per-model matrix of pairwise pooling p-values is attached as the
 \description{
 Assigns datasets to groups such that the datasets within a group are
 statistically poolable (via the \code{\link[=poolability_test]{poolability_test()}} likelihood-ratio test)
-and datasets in different groups are not. Grouping is performed per model,
+with one selected non-overlapping grouping. This does not imply that every
+cross-group subset fails the pooling test. Grouping is performed per model,
 because poolability can differ between the exponential and beta-Poisson
 models.
+}
+\details{
+Group numbers are labels within a model, not rankings. This function
+returns assignments, not pooled datasets or fitted models. Use
+\code{\link[=poolability_combinations]{poolability_combinations()}} to inspect overlapping candidate combinations.
+Check metadata compatibility before grouping; it is not enforced here.
+}
+\examples{
+path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
+raw <- readr::read_csv(path, show_col_types = FALSE)
+trials <- split(raw, raw$study_id)
+groups <- group_datasets(trials, method = "exhaustive")
+groups
+# For both models, A and B share group 1; C is in group 2.
+attr(groups, "pairwise")
 }

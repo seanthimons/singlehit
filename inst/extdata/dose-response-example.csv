@@ -1,0 +1,4 @@
+study_id,host,dose_unit,endpoint,dose,positive,negative
+example_trial,human,FFU,infection,1,1,9
+example_trial,human,FFU,infection,10,5,5
+example_trial,human,FFU,infection,100,9,1

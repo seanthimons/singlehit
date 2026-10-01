@@ -14,9 +14,30 @@ negative-response count columns.}
 }
 \value{
 A tibble with one row per dose and columns \code{dose}, \code{positive},
-\code{negative}, \code{total}, and \code{response}.
+\code{negative}, \code{total}, and numeric \code{response}, followed by optional metadata.
 }
 \description{
 Validates grouped binomial counts, combines rows with the same dose, and
 calculates total subjects and observed response probabilities.
+Metadata is optional: plain three-column inputs remain supported.
+Supplied \code{study_id}, \code{host}, \code{dose_unit}, and \code{endpoint} must each contain
+one non-missing, non-blank value throughout the input. \code{study_id} identifies
+one experiment. Split different experiments into separate data frames before
+fitting or testing poolability. Other metadata is preserved, but must agree
+between rows sharing a dose. \code{total} and numeric \code{response} are recalculated;
+use \code{endpoint} for the measured outcome, such as infection, illness, or death.
+}
+\examples{
+# Plain three-column data still works.
+counts <- data.frame(dose = c(1, 10, 100), positive = c(1, 5, 9),
+                     negative = c(9, 5, 1))
+as_dose_response(counts)
+# Add optional experiment identity and descriptive metadata.
+counts$study_id <- "example_trial"
+counts$host <- "human"
+counts$dose_unit <- "FFU"
+counts$endpoint <- "infection"
+counts$citation <- "Synthetic teaching example"
+as_dose_response(counts)
+# Use endpoint for the outcome label, not the calculated response column.
 }
