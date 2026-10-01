@@ -1,16 +1,10 @@
-name: Test Coverage
+name: Test coverage
 
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "NEWS.md"
-      - "**/*.md"
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "NEWS.md"
-      - "**/*.md"
   workflow_dispatch:
 
 permissions:
@@ -22,47 +16,11 @@ concurrency:
 
 jobs:
   coverage:
-    if: github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-
-    env:
-      GITHUB_PAT: ${{ github.token }}
-      R_KEEP_PKG_SOURCE: yes
-      R_PROFILE_USER: /dev/null
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Set up R
-        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
-        with:
-          r-version: release
-          use-public-rspm: true
-
-      - name: Install package dependencies
-        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
-        with:
-          extra-packages: any::covr
-          needs: coverage
-
-      - name: Calculate coverage
-        shell: Rscript {0}
-        run: |
-          coverage <- covr::package_coverage(type = "tests")
-          percent <- covr::percent_coverage(coverage)
-          summary <- sprintf("Package test coverage: %.2f%%", percent)
-          cat(summary, "\n")
-          writeLines(summary, "coverage-summary.txt")
-          saveRDS(coverage, "coverage.rds")
-          cat("## Test coverage\n\n", summary, "\n", file = Sys.getenv("GITHUB_STEP_SUMMARY"), append = TRUE)
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: test-coverage
-          path: |
-            coverage-summary.txt
-            coverage.rds
-          if-no-files-found: error
-          retention-days: 14
+    name: Coverage
+    permissions:
+      contents: read
+      id-token: write
+    uses: seanthimons/baseline/.github/workflows/test-coverage.yaml@733a6e4554870ab2fa8dd7495fa67bea029bb38c # v1.3.0
+    with:
+      codecov: false
+      quarto: false
