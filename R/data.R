@@ -8,7 +8,8 @@
 #' @param path Path to a delimited text file.
 #' @param delim Delimiter passed to [readr::read_delim()]. `NULL` asks readr to
 #'   detect it.
-#' @param dose,positive,negative Optional source column names.
+#' @param dose,positive,negative Optional source column names as strings, such as
+#'   `positive = "infected"`. Omit to detect recognized aliases automatically.
 #'
 #' @return A tibble with columns `dose`, `positive`, `negative`, `total`, and
 #'   `response`, followed by any supplied metadata columns.
@@ -42,6 +43,20 @@ read_dose_response <- function(path, delim = NULL, dose = NULL, positive = NULL,
 #' between rows sharing a dose. `total` and numeric `response` are recalculated;
 #' use `endpoint` for the measured outcome, such as infection, illness, or death.
 #'
+#' @details
+#' Recognized column names are `dose`, `positive` / `pos` / `positive_response`,
+#' and `negative` / `neg` / `negative_response`. Detection lowercases names and
+#' replaces punctuation with underscores, so `Positive.Response` is recognized.
+#' Other names require explicit mapping with the `dose`, `positive`, and
+#' `negative` arguments, or renaming before calling this function. Data frames
+#' and tibbles, including those created by [tibble::tribble()], follow the same
+#' rules. A total or response proportion cannot replace the two count columns.
+#'
+#' Doses must be finite numeric values greater than zero; counts must be finite,
+#' non-negative whole numbers, with at least one subject per row. After combining
+#' repeated doses, at least three distinct doses and more than one positive
+#' response in total are required. Mapping names does not bypass these checks.
+#'
 #' @inheritParams read_dose_response
 #' @param data A data frame containing dose, positive-response count, and
 #'   negative-response count columns.
@@ -49,10 +64,29 @@ read_dose_response <- function(path, delim = NULL, dose = NULL, positive = NULL,
 #' @return A tibble with one row per dose and columns `dose`, `positive`,
 #'   `negative`, `total`, and numeric `response`, followed by optional metadata.
 #' @examples
+#' library(dplyr)
 #' # Plain three-column data still works.
 #' counts <- data.frame(dose = c(1, 10, 100), positive = c(1, 5, 9),
 #'                      negative = c(9, 5, 1))
 #' as_dose_response(counts)
+#' # Recognized aliases need no mapping.
+#' aliases <- dplyr::rename(counts, pos = positive, neg = negative)
+#' as_dose_response(aliases)
+#' # Unrecognized names fail detection; map them or rename them first.
+#' trial <- tibble::tribble(
+#'   ~dose_amount, ~infected, ~uninfected,
+#'              1,         1,           9,
+#'             10,         5,           5,
+#'            100,         9,           1
+#' )
+#' tryCatch(as_dose_response(trial), error = function(e) message(conditionMessage(e)))
+#' mapped <- as_dose_response(
+#'   trial, dose = "dose_amount", positive = "infected", negative = "uninfected"
+#' )
+#' renamed <- trial %>%
+#'   dplyr::rename(dose = dose_amount, positive = infected, negative = uninfected) %>%
+#'   as_dose_response()
+#' identical(mapped, renamed)
 #' # Add optional experiment identity and descriptive metadata.
 #' counts$study_id <- "example_trial"
 #' counts$host <- "human"
