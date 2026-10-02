@@ -18,7 +18,8 @@ read_dose_response(
 \item{delim}{Delimiter passed to \code{\link[readr:read_delim]{readr::read_delim()}}. \code{NULL} asks readr to
 detect it.}
 
-\item{dose, positive, negative}{Optional source column names.}
+\item{dose, positive, negative}{Optional source column names as strings, such as
+\code{positive = "infected"}. Omit to detect recognized aliases automatically.}
 }
 \value{
 A tibble with columns \code{dose}, \code{positive}, \code{negative}, \code{total}, and

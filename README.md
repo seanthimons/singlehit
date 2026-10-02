@@ -73,8 +73,9 @@ Every entry point (`as_dose_response()`, `read_dose_response()`,
 | `positive` | `positive`, `pos`, `positive_response` | non-negative **whole number** |
 | `negative` | `negative`, `neg`, `negative_response` | non-negative **whole number** |
 
-Matching is case- and punctuation-insensitive; override it with
-`as_dose_response(data, dose =, positive =, negative =)`. Rows sharing a dose are
+Detection lowercases names and replaces punctuation with underscores, so
+`Dose`, `POS`, and `Positive.Response` are recognized. Other names require
+explicit mapping or renaming, as shown below. Rows sharing a dose are
 summed, and the standardized output adds `total` (`positive + negative`) and
 `response` (`positive / total`). For fitting to proceed the data must have
 **at least 3 distinct doses** and **more than 1 positive response in total**.
@@ -95,6 +96,66 @@ ward_rotavirus
 
 as_dose_response(ward_rotavirus) # standardized: dose, positive, negative, total, response
 ```
+
+### Import a data frame or tribble
+
+```r
+library(dplyr) # supplies %>% for the renaming example
+```
+
+A data frame or a tibble from `tibble::tribble()` works the same way. Recognized
+aliases need no renaming:
+
+```r
+counts <- data.frame(
+  dose = c(1, 10, 100),
+  pos = c(1, 5, 9),
+  neg = c(9, 5, 1)
+)
+as_dose_response(counts)
+```
+
+Names such as `dose_amount`, `infected`, and `uninfected` are not recognized
+aliases. This table has valid values, but automatic column detection fails:
+
+```r
+trial <- tibble::tribble(
+  ~dose_amount, ~infected, ~uninfected,
+             1,         1,           9,
+            10,         5,           5,
+           100,         9,           1
+)
+tryCatch(as_dose_response(trial), error = function(e) message(conditionMessage(e)))
+#> Could not detect the dose column; supply its name explicitly.
+```
+
+Map the original names with quoted strings. This leaves `trial` unchanged and
+returns the standardized columns:
+
+```r
+mapped <- as_dose_response(
+  trial, dose = "dose_amount", positive = "infected", negative = "uninfected"
+)
+mapped
+```
+
+Or rename the columns before calling `as_dose_response()`. In `dplyr::rename()`,
+the new name goes on the left:
+
+```r
+renamed <- trial %>%
+  dplyr::rename(dose = dose_amount, positive = infected, negative = uninfected) %>%
+  as_dose_response()
+identical(mapped, renamed)
+#> [1] TRUE
+```
+
+Mapping or renaming only fixes column detection. Doses must still be finite
+numeric values greater than zero, counts must be non-negative whole numbers,
+and every row must contain at least one subject. `as_dose_response()` also
+rejects fewer than three distinct doses or at most one positive response in
+total. A `total` column or a response proportion does not replace the required
+positive and negative counts.
 
 ### Add experiment details
 

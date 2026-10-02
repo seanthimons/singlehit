@@ -3,6 +3,10 @@ url: https://seanthimons.github.io/singlehit/
 template:
   bootstrap: 5
 
+home:
+  sidebar:
+    structure: [toc, links, license, community, citation, authors, dev]
+
 navbar:
   structure:
     left: [intro, reference, articles]
