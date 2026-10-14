@@ -1,10 +1,15 @@
 # Run from the package root:
-# Rscript data-raw/plot-preferred-models.R workbook.xlsx overview.png [--facet-outcome]
+# Rscript data-raw/plot-preferred-models.R workbook.xlsx overview.png [--facet-outcome | --facet-group-outcome | --facet-taxa-outcome | --facet-taxa-genus]
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 2L || length(args) > 3L || (length(args) == 3L && args[[3L]] != "--facet-outcome")) {
-  stop("Supply the workbook and output PNG paths, optionally followed by --facet-outcome.")
+modes <- c("--facet-outcome", "--facet-group-outcome", "--facet-taxa-outcome", "--facet-taxa-genus")
+if (length(args) < 2L || length(args) > 3L || (length(args) == 3L && !args[[3L]] %in% modes)) {
+  stop("Supply the workbook and output PNG paths, optionally followed by --facet-outcome --facet-group-outcome, --facet-taxa-outcome, or --facet-taxa-genus.")
 }
-facet_outcome <- length(args) == 3L
+mode <- if (length(args) == 3L) args[[3L]] else ""
+facet_outcome <- mode == "--facet-outcome"
+facet_taxa <- mode %in% c("--facet-taxa-outcome", "--facet-taxa-genus")
+color_genus <- mode == "--facet-taxa-genus"
+facet_grid <- mode == "--facet-group-outcome" || facet_taxa
 
 pkgload::load_all(".", quiet = TRUE)
 raw <- readxl::read_excel(args[[1L]], sheet = "raw data", .name_repair = "minimal")
@@ -50,6 +55,7 @@ curves <- purrr::map_dfr(names(experiments), function(study_key) {
       dose = dose,
       estimate = estimate,
       study_key = study_key,
+      pathogen = experiment$pathogen[[1L]],
       group = tools::toTitleCase(tolower(experiment$pathogen_category[[1L]])),
       outcome = experiment[["Response type"]][[1L]],
       source = "Workbook parameters"
@@ -60,6 +66,7 @@ curves <- purrr::map_dfr(names(experiments), function(study_key) {
   prediction_curve(fit, points = 100L, dose_range = range) |>
     dplyr::mutate(
       study_key = study_key,
+      pathogen = experiment$pathogen[[1L]],
       group = tools::toTitleCase(tolower(experiment$pathogen_category[[1L]])),
       outcome = experiment[["Response type"]][[1L]],
       source = "Refit from counts"
@@ -69,21 +76,43 @@ curves <- purrr::map_dfr(names(experiments), function(study_key) {
 if (nrow(curves) == 0L) stop("No preferred models could be plotted.")
 if (any(!is.finite(curves$estimate))) stop("A curve contains invalid probabilities.")
 outcome <- tolower(curves$outcome)
-curves$outcome_group <- ifelse(
-  grepl("death|mortality|stillbirth", outcome),
-  "Death or mortality",
-  ifelse(grepl("infection|culture|isolation|shedding|invasion", outcome), "Infection or detection", "Illness or clinical signs")
+curves$outcome_group <- dplyr::case_when(
+  grepl("death|mortality|stillbirth", outcome) ~ "Death or mortality",
+  grepl("culture|isolation|shedding", outcome) ~ "Detection or shedding",
+  grepl("infection|invasion|antibody", outcome) ~ "Infection",
+  TRUE ~ "Illness or clinical signs"
 )
-curves$outcome_group <- factor(curves$outcome_group, levels = c("Infection or detection", "Illness or clinical signs", "Death or mortality"))
+curves$outcome_group <- factor(curves$outcome_group, levels = c("Infection", "Detection or shedding", "Illness or clinical signs", "Death or mortality"))
+curves$genus <- sub("\\s.*$", "", curves$pathogen)
+if (facet_taxa) {
+  # ponytail: hand-mapped genus -> panel; unmapped bacteria land in "Other bacteria" (swap for NCBI via taxizedb if the list grows).
+  taxa <- c(
+    Escherichia = "Enterobacterales", Salmonella = "Enterobacterales", Shigella = "Enterobacterales", Yersinia = "Enterobacterales",
+    Vibrio = "Other Gammaproteobacteria", Pseudomonas = "Other Gammaproteobacteria", Legionella = "Other Gammaproteobacteria",
+    Coxiella = "Other Gammaproteobacteria", Francisella = "Other Gammaproteobacteria",
+    Rickettsia = "Other Proteobacteria", Burkholderia = "Other Proteobacteria", Campylobacter = "Other Proteobacteria",
+    Bacillus = "Firmicutes", Listeria = "Firmicutes", Staphylococcus = "Firmicutes", Mycobacterium = "Actinobacteria"
+  )
+  panel <- unname(taxa[curves$genus])
+  panel[is.na(panel) & curves$group == "Bacteria"] <- "Other bacteria"
+  curves$group <- ifelse(is.na(panel), curves$group, panel)
+}
 groups <- sort(unique(curves$group))
 colors <- c(Bacteria = "#C65D00", Virus = "#0066A1", Protozoa = "#008C6A", Prion = "#6A1B9A")
+if (facet_taxa) {
+  colors <- c(
+    Enterobacterales = "#C65D00", "Other Gammaproteobacteria" = "#E69F00", "Other Proteobacteria" = "#9C4A1A",
+    Firmicutes = "#7A3B00", Actinobacteria = "#D55E8A", "Other bacteria" = "#999999",
+    Virus = "#0066A1", Protozoa = "#008C6A", Prion = "#6A1B9A"
+  )
+}
 counts <- table(curves$group[!duplicated(curves$study_key)])
 labels <- paste0(groups, " (", counts[groups], ")")
 names(labels) <- groups
 
-plot <- ggplot2::ggplot(curves, ggplot2::aes(x = .data$dose, y = .data$estimate, group = .data$study_key, color = .data$group)) +
+plot <- ggplot2::ggplot(curves, ggplot2::aes(x = .data$dose, y = .data$estimate, group = .data$study_key, color = .data[[if (color_genus) "genus" else "group"]])) +
   ggplot2::geom_line(alpha = 0.55, linewidth = 0.55) +
-  ggplot2::scale_color_manual(values = colors, breaks = groups, labels = labels) +
+  (if (color_genus) ggplot2::scale_color_hue() else ggplot2::scale_color_manual(values = colors, breaks = groups, labels = labels)) +
   ggplot2::guides(color = ggplot2::guide_legend(override.aes = list(alpha = 1))) +
   ggplot2::scale_x_log10(labels = scales::label_log(base = 10)) +
   ggplot2::scale_y_continuous(limits = c(0, 1)) +
@@ -92,13 +121,14 @@ plot <- ggplot2::ggplot(curves, ggplot2::aes(x = .data$dose, y = .data$estimate,
     subtitle = sprintf("%d experiments with preferred exponential or beta-Poisson models", length(unique(curves$study_key))),
     x = "Recorded dose (log10 scale; study-specific units)",
     y = "Probability of reported outcome",
-    color = "Pathogen group",
+    color = if (color_genus) "Genus" else "Pathogen group",
     caption = "Curves use observed dose ranges where available; otherwise 0.01–100 × ID50. Dose units and outcomes vary."
   ) +
   ggplot2::theme_minimal(base_size = 11)
 if (facet_outcome) plot <- plot + ggplot2::facet_wrap(ggplot2::vars(.data$outcome_group), ncol = 1)
+if (facet_grid) plot <- plot + ggplot2::facet_grid(rows = ggplot2::vars(.data$outcome_group), cols = ggplot2::vars(.data$group), labeller = ggplot2::labeller(group = ggplot2::label_wrap_gen(14)))
 
-ggplot2::ggsave(args[[2L]], plot, width = 10, height = if (facet_outcome) 11 else 6, dpi = 160)
+ggplot2::ggsave(args[[2L]], plot, width = if (facet_taxa) 15 else if (facet_grid) 12 else 10, height = if (facet_grid) 14 else if (facet_outcome) 11 else 6, dpi = 160)
 cat(sprintf("Plotted %d of %d experiments.\n", length(unique(curves$study_key)), length(experiments)))
 print(table(curves$source[!duplicated(curves$study_key)]))
 print(table(curves$outcome_group[!duplicated(curves$study_key)]))
