@@ -50,6 +50,7 @@ test_that("async bootstrap returns a collectable job and cleans up its daemons",
 
   expect_s3_class(job, "qdr_bootstrap_job")
   expect_true(mirai::daemons_set(.compute = job$compute))
+  expect_identical(bootstrap_progress(job)$total, 1L) # 8 replicates fit in one batch
 
   result <- collect_bootstrap(job)
 
