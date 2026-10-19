@@ -52,7 +52,9 @@ reference:
       - bootstrap_dose_response_async
       - bootstrap_dose_response_models
       - collect_bootstrap
+      - bootstrap_progress
       - bootstrap_confint
+      - add_bootstrap
   - title: broom / tidymodels methods
     contents:
       - tidy.qdr_fit
@@ -60,6 +62,7 @@ reference:
       - augment.qdr_fit
   - title: Pooling multiple datasets
     contents:
+      - fit_pooled_dose_response
       - poolability_test
       - poolability_combinations
       - group_datasets

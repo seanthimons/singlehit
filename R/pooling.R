@@ -1,3 +1,37 @@
+#' Fit pooled dose-response models to several datasets
+#'
+#' Fits each requested model once to the stacked dose groups of several
+#' datasets, the pooled fit that [poolability_test()] compares against separate
+#' fits. Rows are stacked, not merged, so a dose shared by two datasets remains
+#' two binomial observations.
+#'
+#' @inheritParams poolability_test
+#'
+#' @return A `qdr_model_set` with one `qdr_fit` per model. Each fit's `data` holds
+#'   the stacked rows, and the set carries them as its `data` attribute. Use
+#'   [bootstrap_dose_response_models()] to bootstrap the pooled fits; refits
+#'   resample the stacked rows and do not merge shared doses. Use
+#'   [plot_dose_response()] with a fit and its bootstrap to draw bands, because a
+#'   pooled fit is not a `qdr_analysis`.
+#' @details The datasets are not tested for poolability here; run
+#'   [poolability_test()] first. Check metadata compatibility as well, since it
+#'   is not enforced. Single-dataset input is allowed and fits that dataset alone.
+#' @examples
+#' path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
+#' raw <- readr::read_csv(path, show_col_types = FALSE)
+#' trials <- split(raw, raw$study_id)
+#' pooled <- fit_pooled_dose_response(trials[c("A", "B")], models = "exponential")
+#' pooled$exponential
+#' nrow(pooled$exponential$data)
+#' @export
+fit_pooled_dose_response <- function(datasets, models = c("exponential", "beta_poisson")) {
+  standardized <- standardize_datasets(datasets)
+  models <- validate_model_set(models)
+  stacked <- dplyr::bind_rows(standardized)
+  fits <- stats::setNames(lapply(models, function(model) fit_core(stacked, model)), models)
+  structure(fits, class = c("qdr_model_set", "list"), data = stacked)
+}
+
 #' Test whether dose-response datasets are statistically poolable
 #'
 #' Runs the poolability likelihood-ratio test (Haas, Rose & Gerba): for each

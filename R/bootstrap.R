@@ -83,6 +83,30 @@ collect_bootstrap <- function(job) {
   new_qdr_bootstrap(estimates, job$fit, job$resample, "mirai")
 }
 
+#' Check the progress of a non-blocking bootstrap job
+#'
+#' Reports how many batches of a [bootstrap_dose_response_async()] job have
+#' finished. Polling never waits for batches and does not change the job, so it
+#' is safe to call repeatedly from an interactive app.
+#'
+#' @param job A `qdr_bootstrap_job` returned by [bootstrap_dose_response_async()].
+#'
+#' @return A list with `done` (finished batches), `total` (batches in the job),
+#'   and `finished` (`TRUE` once every batch has resolved). Each batch holds up
+#'   to 20 replicates. Call [collect_bootstrap()] to retrieve the result.
+#' @details Failed batches count as finished; [collect_bootstrap()] reports them
+#'   as errors. Polling does not stop the mirai daemons that the job owns.
+#' @export
+bootstrap_progress <- function(job) {
+  if (!inherits(job, "qdr_bootstrap_job")) {
+    stop("`job` must be a qdr_bootstrap_job.", call. = FALSE)
+  }
+  pending <- vapply(job$map, mirai::unresolved, logical(1))
+  total <- length(pending)
+  done <- total - sum(pending)
+  list(done = as.integer(done), total = as.integer(total), finished = done == total)
+}
+
 prepare_bootstrap <- function(object, times, resample, seed, backend, compute, workers) {
   check_qdr_fit(object)
   resample <- match.arg(resample, c("observed", "fitted"))
@@ -230,14 +254,26 @@ bind_bootstrap_results <- function(results) {
   dplyr::bind_rows(results)
 }
 
+# Refit a resampled grouped dataset. Resampled rows line up one-to-one with the
+# fitted rows (one per dose for a single dataset, stacked rows for a pooled fit),
+# so they are fit as-is. Going through as_dose_response() would merge shared doses.
+refit_sample <- function(original_fit, sample_data) {
+  total <- sample_data$positive + sample_data$negative
+  data <- tibble::tibble(
+    dose = sample_data$dose,
+    positive = sample_data$positive,
+    negative = sample_data$negative,
+    total = total,
+    response = sample_data$positive / total
+  )
+  validate_dose_response_groups(data)
+  fit_core(data, original_fit$model, start = original_fit$coefficients)
+}
+
 bootstrap_refit <- function(original_fit, sample_data, replicate) {
   tryCatch(
     {
-      fit <- suppressWarnings(fit_dose_response(
-        sample_data,
-        model = original_fit$model,
-        start = original_fit$coefficients
-      ))
+      fit <- suppressWarnings(refit_sample(original_fit, sample_data))
       values <- c(
         list(
           model = original_fit$model,
