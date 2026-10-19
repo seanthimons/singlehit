@@ -8,4 +8,5 @@ app_server <- function(input, output, session) {
   data <- mod_upload_server("upload")
   analysis <- mod_fit_server("fit", data)
   mod_compare_server("compare", analysis)
+  mod_figures_server("figures", analysis)
 }

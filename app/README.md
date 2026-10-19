@@ -17,7 +17,12 @@ depends on the app.
   deviance comparison), the assessment table, and the experimental consensus
   vote, labelled as such.
 
-Plots, bootstrap uncertainty, pooling, and export are planned.
+- **Plots:** the model overlay, one panel per model, or a single model, with PNG
+  download. Confidence bands will appear in the panel and single-model views
+  once the planned bootstrap support lands; the overlay never draws bands.
+
+Interactive plot building, bootstrap uncertainty, pooling, and export are
+planned.
 
 ## Running during development
 

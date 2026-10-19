@@ -19,6 +19,7 @@ Imports:
     bslib,
     config,
     generics,
+    ggplot2,
     golem,
     readr,
     shiny,
