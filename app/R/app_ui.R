@@ -7,10 +7,17 @@
 app_ui <- function(request) {
   tagList(
     golem_add_external_resources(),
-    bslib::page_sidebar(
+    bslib::page_navbar(
       title = "singlehit",
-      sidebar = bslib::sidebar(mod_upload_ui("upload")),
-      mod_upload_table_ui("upload")
+      bslib::nav_panel(
+        "Data",
+        bslib::layout_sidebar(sidebar = bslib::sidebar(mod_upload_ui("upload")), mod_upload_table_ui("upload"))
+      ),
+      bslib::nav_panel(
+        "Fit",
+        bslib::layout_sidebar(sidebar = bslib::sidebar(mod_fit_ui("fit")), mod_fit_results_ui("fit"))
+      ),
+      bslib::nav_panel("Compare", mod_compare_ui("compare"))
     )
   )
 }

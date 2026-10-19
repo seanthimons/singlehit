@@ -5,5 +5,7 @@
 #' @import shiny
 #' @noRd
 app_server <- function(input, output, session) {
-  dose_response <- mod_upload_server("upload")
+  data <- mod_upload_server("upload")
+  analysis <- mod_fit_server("fit", data)
+  mod_compare_server("compare", analysis)
 }

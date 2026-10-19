@@ -18,7 +18,9 @@ Depends:
 Imports:
     bslib,
     config,
+    generics,
     golem,
+    readr,
     shiny,
     singlehit (>= 0.2.0)
 Suggests:
