@@ -22,6 +22,13 @@ The package provides:
 - percentile parameter intervals and pointwise confidence curves; and
 - `ggplot2` model and bootstrap plots.
 
+## Shiny app
+
+A work-in-progress Shiny interface lives in the
+[`app/`](https://github.com/seanthimons/singlehit/tree/main/app) directory. It is
+a separate package that depends on `singlehit`; installing `singlehit` does not
+install or require it.
+
 ## Installation
 
 <!--
