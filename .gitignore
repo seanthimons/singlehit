@@ -1,8 +1,13 @@
-# Ignore every dot file and dot folder in the project root by default; the ones
-# that belong in the repository are opted back in below.
+# Root-local workspace policy. Ignore every dot file and dot folder in the project
+# root (.claude/, .planning/, .beans/, .worktrees/, .Renviron, .Rhistory) and every
+# root markdown file (AGENTS.md, CLAUDE.md, HANDOFF.md, session notes) without
+# naming them. Add a specific !/<name> rule to opt a file into the repository.
 /.*
-!/.beans
+/*.md
 !/.github
+!/README.md
+!/NEWS.md
+!/TODO.md
 !/.gitignore
 !/.gitattributes
 !/.gitleaks.toml
