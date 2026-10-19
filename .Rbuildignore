@@ -10,3 +10,4 @@
 ^renv\.lock$
 ^TODO\.md$
 ^singlehit\.Rcheck$
+^app$

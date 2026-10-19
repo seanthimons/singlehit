@@ -1,0 +1,34 @@
+Package: singlehitapp
+Title: Shiny App for the 'singlehit' Dose-Response Package
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Sean", "Thimons", email = "thimons.sean@gmail.com", role = c("aut", "cre"))
+  )
+Description: A golem-based Shiny interface to the 'singlehit' package. It
+    imports grouped dose-response data and exposes the package's model fits,
+    diagnostics, and plots interactively. The app uses only exported
+    'singlehit' functions.
+License: MIT + file LICENSE
+URL: https://github.com/seanthimons/singlehit/tree/main/app
+BugReports: https://github.com/seanthimons/singlehit/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Depends:
+    R (>= 4.1.0)
+Imports:
+    bslib,
+    config,
+    generics,
+    ggplot2,
+    golem,
+    readr,
+    shiny,
+    singlehit (>= 0.2.0)
+Suggests:
+    pkgload,
+    testthat (>= 3.0.0),
+    withr
+Remotes:
+    seanthimons/singlehit
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.0
