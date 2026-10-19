@@ -1,0 +1,5 @@
+/* esquisse ships a handwriting font for its banner title; use the app font. */
+.esquisse-title-container .esquisse-title {
+  font-family: inherit !important;
+  font-size: 1.25rem;
+}

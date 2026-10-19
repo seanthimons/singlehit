@@ -27,7 +27,8 @@ The package provides:
 A work-in-progress Shiny interface lives in the
 [`app/`](https://github.com/seanthimons/singlehit/tree/main/app) directory. It is
 a separate package that depends on `singlehit`; installing `singlehit` does not
-install or require it.
+install or require it. The app is licensed under GPL-3, while `singlehit`
+remains MIT.
 
 ## Installation
 
