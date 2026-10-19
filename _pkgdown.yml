@@ -60,6 +60,7 @@ reference:
       - augment.qdr_fit
   - title: Pooling multiple datasets
     contents:
+      - fit_pooled_dose_response
       - poolability_test
       - poolability_combinations
       - group_datasets

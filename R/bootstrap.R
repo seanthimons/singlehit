@@ -230,14 +230,26 @@ bind_bootstrap_results <- function(results) {
   dplyr::bind_rows(results)
 }
 
+# Refit a resampled grouped dataset. Resampled rows line up one-to-one with the
+# fitted rows (one per dose for a single dataset, stacked rows for a pooled fit),
+# so they are fit as-is. Going through as_dose_response() would merge shared doses.
+refit_sample <- function(original_fit, sample_data) {
+  total <- sample_data$positive + sample_data$negative
+  data <- tibble::tibble(
+    dose = sample_data$dose,
+    positive = sample_data$positive,
+    negative = sample_data$negative,
+    total = total,
+    response = sample_data$positive / total
+  )
+  validate_dose_response_groups(data)
+  fit_core(data, original_fit$model, start = original_fit$coefficients)
+}
+
 bootstrap_refit <- function(original_fit, sample_data, replicate) {
   tryCatch(
     {
-      fit <- suppressWarnings(fit_dose_response(
-        sample_data,
-        model = original_fit$model,
-        start = original_fit$coefficients
-      ))
+      fit <- suppressWarnings(refit_sample(original_fit, sample_data))
       values <- c(
         list(
           model = original_fit$model,
