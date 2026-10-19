@@ -53,6 +53,7 @@ reference:
       - bootstrap_dose_response_models
       - collect_bootstrap
       - bootstrap_confint
+      - add_bootstrap
   - title: broom / tidymodels methods
     contents:
       - tidy.qdr_fit
