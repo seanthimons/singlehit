@@ -29,9 +29,9 @@ test_that("a blank seed means no seed", {
 
 test_that("invalid settings are refused with a clear message", {
   analysis <- example_analysis()
-  expect_error(bootstrap_plan(analysis, 50), "between 100 and 5,000")
-  expect_error(bootstrap_plan(analysis, 20000), "between 100 and 5,000")
-  expect_error(bootstrap_plan(analysis, 10000), "between 100 and 5,000")
+  expect_error(bootstrap_plan(analysis, 50), "between 100 and 10,000")
+  expect_error(bootstrap_plan(analysis, 20000), "between 100 and 10,000")
+  expect_no_error(bootstrap_plan(analysis, 10000))
   expect_error(bootstrap_plan(analysis, 1000.5), "whole number")
   expect_error(bootstrap_plan(analysis, NA_real_), "whole number")
   expect_error(bootstrap_plan(analysis, c(100, 200)), "whole number")

@@ -5,12 +5,13 @@
 #' ceiling: the shared pool is first-in first-out, and a very long exact run
 #' would hold up every other session.
 #'
-#' The ceiling is 5,000, not singlehit's 10,000 default. Starting a run prepares
-#' every replicate on the app's single R process (about 1 ms each, plus a
-#' dispatch cost that grew quadratically in singlehit when measured), and the
-#' app cannot respond to any session while that happens.
+#' The ceiling matches singlehit's own default of 10,000. Starting a run prepares
+#' every replicate on the app's single R process, which blocked it for 17 s at
+#' 10,000 replicates (two models) before singlehit drew the replicates in one
+#' vectorized call and stopped shipping the whole task list with every batch; it
+#' is now about a second. See dev/benchmark_bootstrap.R.
 #' @noRd
-bootstrap_limits <- list(min = 100L, max = 5000L, exact_max = 1000L)
+bootstrap_limits <- list(min = 100L, max = 10000L, exact_max = 1000L)
 
 #' Gentle defaults for the bootstrap controls
 #' @noRd

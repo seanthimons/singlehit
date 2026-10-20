@@ -62,7 +62,7 @@ test_that("invalid settings show an error and start nothing", {
   shiny::testServer(mod_bootstrap_server, args = list(analysis = shiny::reactiveVal(example_analysis())), {
     session$setInputs(times = 10, resample = "observed", seed = NA, run = 1)
     expect_equal(state$status, "error")
-    expect_match(state$message, "between 100 and 5,000")
+    expect_match(state$message, "between 100 and 10,000")
     expect_length(jobs(), 0L)
     expect_false(mirai::daemons_set(.compute = bootstrap_compute_profile))
   })
@@ -122,4 +122,18 @@ test_that("a new analysis cancels a run and discards finished results", {
     expect_equal(state$status, "idle")
     expect_length(session$returned()$bootstraps, 0L)
   })
+})
+
+test_that("the Run buttons are task buttons that turn busy as soon as they are clicked", {
+  bootstrap_html <- as.character(mod_bootstrap_ui("bootstrap"))
+  expect_match(bootstrap_html, "bslib-task-button")
+  expect_match(bootstrap_html, "Preparing replicates...", fixed = TRUE)
+
+  fit_html <- as.character(mod_fit_ui("fit"))
+  expect_match(fit_html, "bslib-task-button")
+  expect_match(fit_html, "Fitting models...", fixed = TRUE)
+})
+
+test_that("the app turns on Shiny's busy indicators", {
+  expect_match(as.character(app_ui(NULL)), "shiny-busy", fixed = TRUE)
 })

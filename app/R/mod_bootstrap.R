@@ -24,13 +24,13 @@ mod_bootstrap_ui <- function(id) {
         choices = c("Observed response probabilities" = "observed", "Fitted model (parametric)" = "fitted")
       ),
       numericInput(ns("seed"), "Random seed (optional)", value = NA, min = 0, step = 1),
-      actionButton(ns("run"), "Run bootstrap", class = "btn-primary"),
+      bslib::input_task_button(ns("run"), "Run bootstrap", label_busy = "Preparing replicates..."),
       actionButton(ns("cancel"), "Cancel", class = "btn-outline-secondary"),
       p(
         class = "text-muted small mt-3",
         "Runs in the background on a shared pool of workers, so you can keep using the other tabs.",
         "When it finishes, confidence bands appear on the Plots and Explore tabs.",
-        "Larger runs take a few seconds to start, during which the app is busy."
+        "Starting a run briefly keeps the app busy, and the button shows when it is."
       )
     ),
     uiOutput(ns("status")),
