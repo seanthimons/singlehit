@@ -170,14 +170,22 @@ new_qdr_bootstrap <- function(estimates, object, resample, backend) {
 
 generate_bootstrap_tasks <- function(object, probability, times, seed) {
   generate <- function() {
+    groups <- nrow(object$data)
+    total <- object$data$total
+    # One vectorized draw for every replicate. rbinom() consumes the random
+    # stream in order, so this is identical to drawing each replicate in turn,
+    # and far cheaper than building a tibble per replicate with tibble().
+    draws <- matrix(
+      stats::rbinom(groups * times, size = rep(total, times), prob = rep(probability, times)),
+      nrow = groups
+    )
     lapply(seq_len(times), function(replicate) {
-      positive <- stats::rbinom(nrow(object$data), size = object$data$total, prob = probability)
+      positive <- draws[, replicate]
       list(
         replicate = replicate,
-        sample_data = tibble::tibble(
-          dose = object$data$dose,
-          positive = positive,
-          negative = object$data$total - positive
+        sample_data = tibble::new_tibble(
+          list(dose = object$data$dose, positive = positive, negative = total - positive),
+          nrow = groups
         )
       )
     })
