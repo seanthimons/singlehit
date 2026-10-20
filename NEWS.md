@@ -1,3 +1,55 @@
+
+
+
+## singlehit v0.3.0 (2026-10-20)
+
+#### New features
+
+- add Plots tab with the standard singlehit figures
+  ([527243d](https://github.com/seanthimons/singlehit/tree/527243d00e12e75ae6a75feb3c6b2a99f59456ea))
+- add Data, Fit and Compare tabs
+  ([85bbea4](https://github.com/seanthimons/singlehit/tree/85bbea4887134e5b9b7acae801f8ad0351fd2f4d))
+- scaffold golem Shiny app as sidecar package in app/
+  ([caf7d45](https://github.com/seanthimons/singlehit/tree/caf7d4525e5691526de689b843d123f48fd836e4))
+- add non-blocking bootstrap_progress()
+  ([82c147c](https://github.com/seanthimons/singlehit/tree/82c147c13b390712652ced614f6e5dadcb352416))
+- add add_bootstrap() to attach bootstraps to an analysis
+  ([a2547f1](https://github.com/seanthimons/singlehit/tree/a2547f1c474c519915c8621a60e566bcb5fa892d))
+- add exported pooled fit that stacks datasets
+  ([0d47431](https://github.com/seanthimons/singlehit/tree/0d47431bee4c73fa8e8ef9a0ba757e46c5cc06b8))
+
+#### Performance
+
+- draw all replicate samples in one vectorized call
+  ([c79a061](https://github.com/seanthimons/singlehit/tree/c79a0618d1c1f2ed89ad3b02b72e07fa0f1e54ac))
+- stop serializing the task list with every mirai batch
+  ([4fac7b4](https://github.com/seanthimons/singlehit/tree/4fac7b40222b1ea86b10fa8c45899c9f8cf04710))
+
+#### Build
+
+- require testthat 3.1.7 for local_mocked_bindings
+  ([c88238d](https://github.com/seanthimons/singlehit/tree/c88238d3af4fbb32dea0416965e92b06870007c3))
+
+#### Tests
+
+- cover the detached mirai worker
+  ([f08e9cb](https://github.com/seanthimons/singlehit/tree/f08e9cbdb278462ad40d6d7df709043426f9a814))
+
+#### Docs
+
+- explain data frame column mapping and add home TOC
+  ([766ff92](https://github.com/seanthimons/singlehit/tree/766ff92f8e6ba356adbaaee2166c094af85ad0a4))
+
+#### Other changes
+
+- release v0.3.0
+  ([13c6f9e](https://github.com/seanthimons/singlehit/tree/13c6f9ed998c1884957275208b4c98d3ebf31291))
+- block root-level markdown and dot files by default
+  ([a23143e](https://github.com/seanthimons/singlehit/tree/a23143e1241a053772222a1dd08e916bda726b18))
+
+Full set of changes:
+[`v0.2.0...v0.3.0`](https://github.com/seanthimons/singlehit/compare/v0.2.0...v0.3.0)
+
 ## singlehit v0.2.0 (2026-10-01)
 
 #### New features
@@ -25,6 +77,11 @@
   ([49d7858](https://github.com/seanthimons/singlehit/tree/49d78589eed0fc1f9e08293b040a7309ccbce96c))
 - index model overlay reference
   ([574f8e8](https://github.com/seanthimons/singlehit/tree/574f8e8df9b0c7bd126b565a13f6dd315c6bc55e))
+
+#### Other changes
+
+- release v0.2.0 (#18)
+  ([601da0c](https://github.com/seanthimons/singlehit/tree/601da0cb5f8a774c7408f7510818e3134ddc559c))
 
 Full set of changes:
 [`v0.1.0...v0.2.0`](https://github.com/seanthimons/singlehit/compare/v0.1.0...v0.2.0)

@@ -1,6 +1,6 @@
 Package: singlehit
 Title: Mechanistic Dose-Response Models for Microbial Risk Assessment
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: c(
     person("Sean", "Thimons", email = "thimons.sean@gmail.com", role = c("aut", "cre")),
     person("Mark H.", "Weir", role = "ctb"),
@@ -37,6 +37,6 @@ Suggests:
     pkgload,
     rmarkdown,
     Rmpfr,
-    testthat (>= 3.0.0)
+    testthat (>= 3.1.7)
 VignetteBuilder: knitr
 Config/testthat/edition: 3
