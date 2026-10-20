@@ -9,4 +9,7 @@ options(shiny.port = httpuv::randomPort())
 golem::detach_all_attached()
 pkgload::load_all("..", export_all = FALSE, helpers = FALSE, attach_testthat = FALSE)
 golem::document_and_reload()
-run_app()
+# run_app() only builds the app object. Calling runApp() on it launches the app
+# however this file is run: source() does not print the returned object, so a
+# bare run_app() would silently do nothing.
+shiny::runApp(run_app())
