@@ -37,6 +37,6 @@ Suggests:
     pkgload,
     rmarkdown,
     Rmpfr,
-    testthat (>= 3.0.0)
+    testthat (>= 3.1.7)
 VignetteBuilder: knitr
 Config/testthat/edition: 3
