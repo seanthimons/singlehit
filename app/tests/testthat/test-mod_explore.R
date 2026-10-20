@@ -45,3 +45,10 @@ test_that("the esquisse wrapper keeps its height inside a fillable page", {
   html <- as.character(mod_explore_ui("explore"))
   expect_match(html, "height: 700px; flex: 0 0 auto;", fixed = TRUE)
 })
+
+test_that("the Explore tab explains the log axis and how to draw confidence bands", {
+  html <- as.character(mod_explore_ui("explore"))
+  expect_match(html, "X-axis transform", fixed = TRUE)
+  expect_match(html, "map lower to ymin and upper to ymax", fixed = TRUE)
+  expect_match(html, "Ribbon", fixed = TRUE)
+})

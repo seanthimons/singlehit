@@ -14,7 +14,7 @@ explore_dataset_choices <- c(
 #' - `observed`: the standardized dose groups.
 #' - `curves`: fitted dose-response curves per model (`estimate`). With a
 #'   bootstrap attached there is one row per dose and confidence level, with
-#'   `lower`/`upper` bounds and `level` as a factor; otherwise they are `NA`.
+#'   `lower`/`upper` bounds and `level` as a factor (widest interval first); otherwise they are `NA`.
 #' - `model_residuals`: observed groups with fitted values and deviance
 #'   residuals per model.
 #'
@@ -35,7 +35,9 @@ explore_datasets <- function(analysis) {
     )
     cbind(model = model_label_ui(name), as.data.frame(curve), stringsAsFactors = FALSE)
   }))
-  levels <- sort(unique(curves$level))
+  # Widest interval first: ggplot draws later groups on top, so the 99% band must
+  # come before the 95% band or it hides it (singlehit's own plots do the same).
+  levels <- sort(unique(curves$level), decreasing = TRUE)
   # paste0() on a zero-length vector still returns "%", which would add a stray
   # level to an all-NA column when there is no bootstrap.
   labels <- if (length(levels) > 0L) paste0(format(100 * levels, trim = TRUE), "%") else character()

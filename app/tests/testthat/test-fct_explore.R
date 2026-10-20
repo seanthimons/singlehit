@@ -25,7 +25,8 @@ test_that("an attached bootstrap adds bands and one row per dose and confidence 
   curves <- explore_datasets(analysis_with_bands())$curves
   expect_false(anyNA(curves$lower))
   expect_s3_class(curves$level, "factor")
-  expect_equal(levels(curves$level), c("95%", "99%"))
+  # Widest first, so the 95% band is drawn on top of the 99% band.
+  expect_equal(levels(curves$level), c("99%", "95%"))
   per_dose <- table(curves$model, curves$dose)
   expect_true(all(per_dose == 2L))
 })

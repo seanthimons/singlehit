@@ -21,7 +21,16 @@ mod_explore_ui <- function(id) {
       ns = ns,
       div(
         class = "mb-3",
-        selectInput(ns("dataset"), "Data to explore", choices = explore_dataset_choices, width = "320px")
+        selectInput(ns("dataset"), "Data to explore", choices = explore_dataset_choices, width = "320px"),
+        p(
+          class = "text-muted small mb-0",
+          paste(
+            "Drag variables onto the slots to build a plot. For a log dose axis, open Axes and set the X-axis",
+            "transform to log10. Confidence bands (Fitted curves, once a bootstrap has been run): map lower to ymin",
+            "and upper to ymax, choose the Ribbon geometry, and split by model and level, for example facet by model",
+            "and fill by level."
+          )
+        )
       ),
       # container = NULL: esquisse's default container injects a global
       # `html, body { overflow: visible !important }` rule that would leak into
