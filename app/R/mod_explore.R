@@ -1,12 +1,16 @@
 #' Explore module UI
 #'
 #' Hosts esquisse so plots can be built by dragging variables onto aesthetics.
+#' plotly is imported so esquisse finds it: without it esquisse prints a failed
+#' requireNamespace() message at startup and shows a "Use {plotly}" switch that
+#' does nothing. With it the switch gives hover and zoom on the plots.
 #' The header keeps only "show data": importing replaces the validated data,
 #' the close button would stop the whole app, the editing buttons change a local
 #' copy that the next analysis silently discards, and opening Settings resets
 #' the aesthetics list this module sets.
 #'
 #' @param id Module id.
+#' @importFrom plotly plotlyOutput
 #' @noRd
 mod_explore_ui <- function(id) {
   ns <- NS(id)

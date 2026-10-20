@@ -24,7 +24,8 @@ depends on the app.
 - **Explore:** build your own plots interactively with
   [esquisse](https://dreamrs.github.io/esquisse/) by dragging variables onto
   aesthetics. Choose the observed dose groups, the fitted curves, or the
-  residuals. The interface font is overridden in `inst/app/www/custom.css`.
+  residuals. Turn on "Use {plotly} to render plot" under Options for hover and zoom.
+  The interface font is overridden in `inst/app/www/custom.css`.
 
 Bootstrap uncertainty, pooling, and export are planned.
 
