@@ -18,6 +18,7 @@ app_ui <- function(request) {
         bslib::layout_sidebar(sidebar = bslib::sidebar(mod_fit_ui("fit")), mod_fit_results_ui("fit"))
       ),
       bslib::nav_panel("Compare", mod_compare_ui("compare")),
+      bslib::nav_panel("Bootstrap", mod_bootstrap_ui("bootstrap")),
       bslib::nav_panel("Plots", mod_figures_ui("figures")),
       bslib::nav_panel("Explore", mod_explore_ui("explore"))
     )

@@ -7,6 +7,7 @@ mod_figures_ui <- function(id) {
   bslib::layout_sidebar(
     sidebar = bslib::sidebar(
       radioButtons(ns("type"), "View", choices = figure_types),
+      uiOutput(ns("band_hint")),
       conditionalPanel(
         "input.type == 'single'",
         ns = ns,
@@ -63,6 +64,19 @@ mod_figures_server <- function(id, analysis) {
       }
     })
     output$plot <- renderPlot(figure(), res = 96)
+
+    output$band_hint <- renderUI({
+      req(analysis(), input$type)
+      if (identical(input$type, "overlay")) {
+        p(class = "text-muted small", "The overlay never shows confidence bands.")
+      } else if (identical(input$type, "single") && !is.null(input$model)) {
+        if (!input$model %in% names(analysis()$bootstraps)) {
+          p(class = "text-muted small", "No confidence bands for this model yet: run the bootstrap.")
+        }
+      } else if (length(analysis()$bootstraps) == 0L) {
+        p(class = "text-muted small", "Run the bootstrap to add confidence bands to this view.")
+      }
+    })
 
     output$download_button <- renderUI({
       req(analysis())

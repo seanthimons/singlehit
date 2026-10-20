@@ -43,6 +43,16 @@ test_that("loading a new source discards the previous column mapping", {
     # in a real session; the example must still parse with auto-detection.
     session$setInputs(example = 1)
     expect_true(all(c("dose", "positive", "negative") %in% names(session$returned())))
-    expect_equal(nrow(session$returned()), 3L)
+    expect_equal(nrow(session$returned()), 8L)
+  })
+})
+
+test_that("the example button loads the Ward rotavirus data", {
+  shiny::testServer(mod_upload_server, {
+    session$setInputs(example = 1)
+    data <- session$returned()
+    expect_equal(nrow(data), 8L)
+    expect_equal(range(data$dose), c(0.009, 90000))
+    expect_equal(sum(data$total), 59)
   })
 })

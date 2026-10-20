@@ -39,3 +39,27 @@ test_that("the download writes a non-empty PNG and tolerates bad dimensions", {
     expect_equal(signature, as.raw(c(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)))
   })
 })
+
+test_that("the Plots tab says where confidence bands come from", {
+  shiny::testServer(mod_figures_server, args = list(analysis = shiny::reactiveVal(example_analysis())), {
+    session$setInputs(type = "overlay")
+    expect_match(as.character(output$band_hint$html), "never shows confidence bands")
+    session$setInputs(type = "panels")
+    expect_match(as.character(output$band_hint$html), "Run the bootstrap")
+  })
+  shiny::testServer(mod_figures_server, args = list(analysis = shiny::reactiveVal(example_analysis_with_bands())), {
+    session$setInputs(type = "panels")
+    expect_null(output$band_hint$html)
+  })
+})
+
+test_that("the single-model hint covers a model that has no bands", {
+  analysis <- example_analysis_with_bands()
+  analysis$bootstraps$exponential <- NULL
+  shiny::testServer(mod_figures_server, args = list(analysis = shiny::reactiveVal(analysis)), {
+    session$setInputs(type = "single", model = "exponential")
+    expect_match(as.character(output$band_hint$html), "No confidence bands for this model")
+    session$setInputs(type = "single", model = "beta_poisson")
+    expect_null(output$band_hint$html)
+  })
+})

@@ -10,7 +10,8 @@ mod_upload_ui <- function(id) {
   auto <- c("Auto-detect" = "")
   tagList(
     fileInput(ns("file"), "Dose-response file", accept = c(".csv", ".tsv", ".txt")),
-    actionButton(ns("example"), "Use example data"),
+    actionButton(ns("example"), "Use Ward rotavirus example data"),
+    p(class = "text-muted small mt-1", "Ward et al. (1986) human rotavirus challenge study."),
     bslib::accordion(
       id = ns("mapping_panel"),
       open = FALSE,
@@ -71,7 +72,7 @@ mod_upload_server <- function(id) {
     observeEvent(input$file, load_source(input$file$datapath))
     observeEvent(
       input$example,
-      load_source(system.file("extdata", "dose-response-example.csv", package = "singlehit"))
+      load_source(system.file("extdata", "Ward_rotavirus.txt", package = "singlehit"))
     )
 
     # Same reader settings as singlehit::read_dose_response(), so the offered

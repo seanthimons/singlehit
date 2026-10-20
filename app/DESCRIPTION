@@ -22,6 +22,8 @@ Imports:
     generics,
     ggplot2,
     golem,
+    mirai (>= 2.5.0),
+    parallel,
     plotly,
     readr,
     shiny,
