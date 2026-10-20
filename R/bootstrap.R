@@ -215,14 +215,7 @@ start_mirai_bootstrap <- function(inputs, object) {
   mapped <- tryCatch(
     mirai::mirai_map(
       batches,
-      function(batch, original_fit, dev_path) {
-        if (!is.null(dev_path) && !pkgload::is_dev_package("singlehit")) {
-          pkgload::load_all(dev_path, quiet = TRUE)
-        }
-        dplyr::bind_rows(lapply(batch, function(task) {
-          singlehit:::bootstrap_refit(original_fit, task$sample_data, task$replicate)
-        }))
-      },
+      bootstrap_worker(),
       .args = list(original_fit = object, dev_path = dev_path),
       .compute = compute
     ),
@@ -243,6 +236,25 @@ start_mirai_bootstrap <- function(inputs, object) {
     ),
     class = "qdr_bootstrap_job"
   )
+}
+
+# The function mirai sends to each daemon with every batch. Its environment is
+# globalenv() so that mirai does not serialize the frame that created it, which
+# holds the full task list. The body uses only namespaced calls, so it needs no
+# free variables from that frame. Source references are removed because under
+# pkgload::load_all() they would carry the whole source file with each batch.
+bootstrap_worker <- function() {
+  worker <- function(batch, original_fit, dev_path) {
+    if (!is.null(dev_path) && !pkgload::is_dev_package("singlehit")) {
+      pkgload::load_all(dev_path, quiet = TRUE)
+    }
+    dplyr::bind_rows(lapply(batch, function(task) {
+      singlehit:::bootstrap_refit(original_fit, task$sample_data, task$replicate)
+    }))
+  }
+  worker <- utils::removeSource(worker)
+  environment(worker) <- globalenv()
+  worker
 }
 
 bind_bootstrap_results <- function(results) {
