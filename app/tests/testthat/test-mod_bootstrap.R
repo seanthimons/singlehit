@@ -135,5 +135,8 @@ test_that("the Run buttons are task buttons that turn busy as soon as they are c
 })
 
 test_that("the app turns on Shiny's busy indicators", {
-  expect_match(as.character(app_ui(NULL)), "shiny-busy", fixed = TRUE)
+  # useBusyIndicators() works by setting these attributes on the page element.
+  html <- as.character(app_ui(NULL))
+  expect_match(html, "dataset.shinyBusyPulse = 'true'", fixed = TRUE)
+  expect_match(html, "dataset.shinyBusySpinners = 'true'", fixed = TRUE)
 })
