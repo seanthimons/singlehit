@@ -22,6 +22,16 @@ This vignette walks the Ward rotavirus human-challenge data from raw counts to a
 library(singlehit)
 ```
 
+## Prerequisites
+
+Check that your data can be fitted before you start. `singlehit` needs:
+
+- **at least 3 distinct doses**, each greater than zero;
+- **more than 1 positive response in total**, summed across all doses; and
+- **counts of positive and negative subjects** for every dose, not just a response proportion. Every dose group must contain at least one subject.
+
+Data that fail these checks are rejected with an explanatory error.
+
 ## Load
 
 The analysis needs **three columns, one row per dose group**: the administered `dose`, and the numbers of subjects who did (`positive`) and did not (`negative`) respond. The package ships this exact shape as `ward_rotavirus`:
@@ -131,6 +141,12 @@ save as CSV. Read it with `read_dose_response("my_trial.csv")`.
 Additional metadata columns are preserved. Duplicate doses are combined only
 when their metadata agrees; conflicting values produce an error naming the
 column. `total` and `response` are recalculated from the counts.
+
+## Bootstrapping and run time
+
+The bootstrap refits each model to thousands of resampled datasets to put uncertainty bounds on the results. Large bootstraps (thousands of replicates) and the opt-in exact beta-Poisson fit can take minutes to hours, depending on your computer. Start with a small number of replicates (for example `bootstrap_times = 200`) to check your pipeline, then scale up.
+
+[mirai](https://mirai.r-lib.org/) runs the bootstrap refits on background R processes, so the run finishes sooner on a multi-core machine and the R console can stay free while it works. It is optional: bootstraps above 1,000 replicates use it when it is installed, and otherwise run one after another in your current R session. To choose the number of workers, set `workers` in `analyze_dose_response()`, or start a pool yourself with `mirai::daemons(4)`. See the README for details.
 
 ## Run
 
