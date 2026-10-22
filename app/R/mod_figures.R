@@ -65,16 +65,40 @@ mod_figures_server <- function(id, analysis) {
     })
     output$plot <- renderPlot(figure(), res = 96)
 
+    # When bands first become available, leave the overlay (which never draws
+    # them) for the panel view, so the new bands are visible straight away.
+    # Held in a reactiveVal, which ignores a set to an identical value, so the
+    # handler below runs only when bands really appear or disappear and does not
+    # depend on how often the upstream analysis is recomputed.
+    has_bands <- reactiveVal(FALSE)
+    observe(has_bands(length(analysis()$bootstraps) > 0L))
+    observeEvent(
+      has_bands(),
+      {
+        target <- view_for_bands(input$type, has_bands())
+        if (!is.null(target)) {
+          updateRadioButtons(session, "type", selected = target)
+          showNotification(
+            "Confidence bands are drawn in the panel and single-model views, so this view was switched to one panel per model.",
+            type = "message",
+            duration = 10
+          )
+        }
+      },
+      ignoreInit = TRUE
+    )
+
     output$band_hint <- renderUI({
       req(analysis(), input$type)
+      hint <- function(text) div(class = "alert alert-info small py-2 mb-2", text)
       if (identical(input$type, "overlay")) {
-        p(class = "text-muted small", "The overlay never shows confidence bands.")
+        hint("The overlay never shows confidence bands. Choose One panel per model or Single model to see them.")
       } else if (identical(input$type, "single") && !is.null(input$model)) {
         if (!input$model %in% names(analysis()$bootstraps)) {
-          p(class = "text-muted small", "No confidence bands for this model yet: run the bootstrap.")
+          hint("No confidence bands for this model yet: run the bootstrap.")
         }
       } else if (length(analysis()$bootstraps) == 0L) {
-        p(class = "text-muted small", "Run the bootstrap to add confidence bands to this view.")
+        hint("Run the bootstrap to add confidence bands to this view.")
       }
     })
 

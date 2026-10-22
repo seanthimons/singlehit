@@ -39,11 +39,11 @@ Pooling and export are planned.
 The app is licensed under GPL-3 (see `LICENSE.md`) because it imports esquisse,
 which is GPL-3. The `singlehit` package itself stays MIT.
 
-## Requires the development version of singlehit
+## Requires singlehit 0.3.0 or later
 
 The Bootstrap and Plots tabs use `singlehit` functions (`add_bootstrap()`,
-`bootstrap_progress()`) that are on `main` but not in the released 0.2.0, so
-install `singlehit` from GitHub until the next release.
+`bootstrap_progress()`) that were added in 0.3.0, so install `singlehit` 0.3.0
+or later (for example from GitHub with `pak::pak("seanthimons/singlehit")`).
 
 ## Running during development
 
