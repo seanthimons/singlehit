@@ -29,7 +29,11 @@ depends on the app.
 - **Explore:** build your own plots interactively with
   [esquisse](https://dreamrs.github.io/esquisse/) by dragging variables onto
   aesthetics. Choose the observed dose groups, the fitted curves, or the
-  residuals. Turn on "Use {plotly} to render plot" under Options for hover and zoom.
+  residuals. Once a bootstrap has been run, "Draw confidence bands" fills in a
+  ribbon plot of the fitted curves on a log dose axis (it drives esquisse's
+  inputs, so it was written against esquisse 2.1.0; if a later esquisse renames
+  them it switches to the fitted curves but leaves the plot unfilled). Turn on
+  "Use {plotly} to render plot" under Options for hover and zoom.
   The interface font is overridden in `inst/app/www/custom.css`.
 
 Pooling and export are planned.

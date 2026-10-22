@@ -57,3 +57,31 @@ explore_datasets <- function(analysis) {
     model_residuals = model_residuals
   )
 }
+
+#' Input ids inside esquisse's module, relative to the Explore module
+#' @noRd
+esquisse_ids <- list(
+  aesthetics = "esquisse-geomaes-aes_1-dragvars",
+  geom = "esquisse-geomaes-geom_1",
+  x_transform = "esquisse-controls-axes-transX"
+)
+
+#' What the "Draw confidence bands" button fills in on the Fitted curves data
+#' @noRd
+bands_preset <- list(
+  aesthetics = list(xvar = "dose", yvar = "estimate", ymin = "lower", ymax = "upper", fill = "level", facet = "model"),
+  geom = "ribbon",
+  x_transform = "log10"
+)
+
+#' Does esquisse's reported drag-and-drop mapping contain the given variables?
+#'
+#' @param target The `target` element of the dragula input value: a list keyed
+#'   by slot name.
+#' @param wanted Named list: slot name to variable name.
+#' @noRd
+mapping_matches <- function(target, wanted) {
+  all(vapply(names(wanted), function(slot) {
+    identical(as.character(unlist(target[[slot]])), wanted[[slot]])
+  }, logical(1)))
+}

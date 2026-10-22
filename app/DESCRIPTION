@@ -18,7 +18,7 @@ Depends:
 Imports:
     bslib,
     config,
-    esquisse (>= 2.0.0),
+    esquisse (>= 2.1.0),
     generics,
     ggplot2,
     golem,
