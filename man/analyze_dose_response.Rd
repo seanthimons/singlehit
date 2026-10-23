@@ -15,7 +15,8 @@ analyze_dose_response(
   compute = NULL,
   workers = NULL,
   check_trend = TRUE,
-  alpha = 0.05
+  alpha = 0.05,
+  replicate_time_limit = 30
 )
 }
 \arguments{
@@ -49,6 +50,9 @@ compare the exact model without bootstrapping it.}
 \item{check_trend}{Warn when an increasing trend is not detected.}
 
 \item{alpha}{Significance level for trend and goodness-of-fit tests.}
+
+\item{replicate_time_limit}{Seconds one bootstrap replicate may run before it
+is recorded as not converged, passed to \code{\link[=bootstrap_dose_response]{bootstrap_dose_response()}}.}
 }
 \value{
 A \code{qdr_analysis} object containing standardized data, trend test,

@@ -20,6 +20,15 @@
 #' @param workers Number of temporary local mirai daemons. `NULL` uses 75% of
 #'   detected physical cores, with a minimum of one. Ignored when using existing
 #'   daemons or the sequential backend.
+#' @param replicate_time_limit Seconds one replicate's refit may run before it is
+#'   abandoned and recorded as not converged, with the reason in its `error`
+#'   column. The default is 30; use `Inf` for no limit. Some resamples, such as
+#'   one where every dose above a point responds and every dose below does not,
+#'   can send the exact beta-Poisson optimiser searching for minutes; the limit
+#'   keeps one such replicate from holding up the whole run. The limit is wall
+#'   time, so on a heavily loaded machine a slow replicate can time out that would
+#'   finish elsewhere. A finite limit also replaces any [setTimeLimit()] already
+#'   set in the process that runs the refit.
 #'
 #' @return A `qdr_bootstrap` tibble with one row per replicate.
 #' @export
@@ -30,12 +39,13 @@ bootstrap_dose_response <- function(
   seed = NULL,
   backend = c("auto", "sequential", "mirai"),
   compute = NULL,
-  workers = NULL
+  workers = NULL,
+  replicate_time_limit = 30
 ) {
-  inputs <- prepare_bootstrap(object, times, resample, seed, backend, compute, workers)
+  inputs <- prepare_bootstrap(object, times, resample, seed, backend, compute, workers, replicate_time_limit)
   backend <- inputs$backend
   if (backend == "sequential") {
-    estimates <- run_sequential_bootstrap(inputs$tasks, object)
+    estimates <- run_sequential_bootstrap(inputs$tasks, object, inputs$time_limit)
     return(new_qdr_bootstrap(estimates, object, inputs$resample, backend))
   }
   collect_bootstrap(start_mirai_bootstrap(inputs, object))
@@ -56,9 +66,10 @@ bootstrap_dose_response_async <- function(
   resample = c("observed", "fitted"),
   seed = NULL,
   compute = NULL,
-  workers = NULL
+  workers = NULL,
+  replicate_time_limit = 30
 ) {
-  inputs <- prepare_bootstrap(object, times, resample, seed, "mirai", compute, workers)
+  inputs <- prepare_bootstrap(object, times, resample, seed, "mirai", compute, workers, replicate_time_limit)
   start_mirai_bootstrap(inputs, object)
 }
 
@@ -107,7 +118,22 @@ bootstrap_progress <- function(job) {
   list(done = as.integer(done), total = as.integer(total), finished = done == total)
 }
 
-prepare_bootstrap <- function(object, times, resample, seed, backend, compute, workers) {
+validate_replicate_time_limit <- function(limit) {
+  if (length(limit) != 1L || !is.numeric(limit) || is.na(limit) || limit <= 0) {
+    stop("`replicate_time_limit` must be a positive number of seconds, or Inf for no limit.", call. = FALSE)
+  }
+}
+
+prepare_bootstrap <- function(
+  object,
+  times,
+  resample,
+  seed,
+  backend,
+  compute,
+  workers,
+  replicate_time_limit = 30
+) {
   check_qdr_fit(object)
   resample <- match.arg(resample, c("observed", "fitted"))
   backend <- match.arg(backend, c("auto", "sequential", "mirai"))
@@ -124,6 +150,7 @@ prepare_bootstrap <- function(object, times, resample, seed, backend, compute, w
   ) {
     stop("`workers` must be NULL or a positive whole number.", call. = FALSE)
   }
+  validate_replicate_time_limit(replicate_time_limit)
   times <- as.integer(times)
   backend <- select_bootstrap_backend(backend, times)
   if (requested_backend == "auto" && backend == "sequential" && times > 1000L) {
@@ -135,7 +162,8 @@ prepare_bootstrap <- function(object, times, resample, seed, backend, compute, w
     resample = resample,
     backend = backend,
     compute = compute,
-    workers = if (is.null(workers)) NULL else as.integer(workers)
+    workers = if (is.null(workers)) NULL else as.integer(workers),
+    time_limit = as.numeric(replicate_time_limit)
   )
 }
 
@@ -194,9 +222,9 @@ generate_bootstrap_tasks <- function(object, probability, times, seed) {
   if (is.null(seed)) generate() else withr::with_seed(seed, generate())
 }
 
-run_sequential_bootstrap <- function(tasks, object) {
+run_sequential_bootstrap <- function(tasks, object, time_limit = Inf) {
   purrr::map_dfr(tasks, function(task) {
-    bootstrap_refit(object, task$sample_data, task$replicate)
+    bootstrap_refit(object, task$sample_data, task$replicate, time_limit)
   })
 }
 
@@ -224,7 +252,7 @@ start_mirai_bootstrap <- function(inputs, object) {
     mirai::mirai_map(
       batches,
       bootstrap_worker(),
-      .args = list(original_fit = object, dev_path = dev_path),
+      .args = list(original_fit = object, dev_path = dev_path, time_limit = inputs$time_limit),
       .compute = compute
     ),
     error = function(cnd) {
@@ -252,12 +280,12 @@ start_mirai_bootstrap <- function(inputs, object) {
 # free variables from that frame. Source references are removed because under
 # pkgload::load_all() they would carry the whole source file with each batch.
 bootstrap_worker <- function() {
-  worker <- function(batch, original_fit, dev_path) {
+  worker <- function(batch, original_fit, dev_path, time_limit = Inf) {
     if (!is.null(dev_path) && !pkgload::is_dev_package("singlehit")) {
       pkgload::load_all(dev_path, quiet = TRUE)
     }
     dplyr::bind_rows(lapply(batch, function(task) {
-      singlehit:::bootstrap_refit(original_fit, task$sample_data, task$replicate)
+      singlehit:::bootstrap_refit(original_fit, task$sample_data, task$replicate, time_limit)
     }))
   }
   worker <- utils::removeSource(worker)
@@ -290,10 +318,46 @@ refit_sample <- function(original_fit, sample_data) {
   fit_core(data, original_fit$model, start = original_fit$coefficients)
 }
 
-bootstrap_refit <- function(original_fit, sample_data, replicate) {
+# Refit one replicate. A refit that runs past `time_limit` seconds is abandoned
+# and recorded as not converged. The limit is enforced with setTimeLimit(), which
+# interrupts R-level code and fires once. fit_core() wraps the optimiser in
+# tryCatch(), which swallows the interruption and then stops with its own "could
+# not be fit" error, so the failure row names the limit whenever the time is up,
+# and a replicate that returns after the limit is treated as timed out too.
+bootstrap_refit <- function(original_fit, sample_data, replicate, time_limit = Inf) {
+  started <- proc.time()[["elapsed"]]
+  timed_out <- function() is.finite(time_limit) && proc.time()[["elapsed"]] - started >= time_limit
+  failed_row <- function(message) {
+    parameters <- stats::setNames(
+      as.list(rep(NA_real_, length(model_parameters(original_fit$model)))),
+      model_parameters(original_fit$model)
+    )
+    values <- c(
+      list(
+        model = original_fit$model,
+        replicate = replicate,
+        converged = FALSE,
+        log_lik = NA_real_,
+        deviance = NA_real_
+      ),
+      parameters,
+      list(ed10 = NA_real_, ed50 = NA_real_, error = message)
+    )
+    tibble::as_tibble_row(values)
+  }
+  limit_message <- sprintf("The refit took longer than the %s-second replicate time limit.", format(time_limit))
+  if (is.finite(time_limit)) {
+    setTimeLimit(elapsed = time_limit, transient = TRUE)
+    on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE), add = TRUE)
+  }
   tryCatch(
     {
       fit <- suppressWarnings(refit_sample(original_fit, sample_data))
+      # The limit only covers the refit; disarm it before the work that follows.
+      setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE)
+      if (timed_out()) {
+        return(failed_row(limit_message))
+      }
       values <- c(
         list(
           model = original_fit$model,
@@ -312,22 +376,10 @@ bootstrap_refit <- function(original_fit, sample_data, replicate) {
       tibble::as_tibble_row(values)
     },
     error = function(cnd) {
-      parameters <- stats::setNames(
-        as.list(rep(NA_real_, length(model_parameters(original_fit$model)))),
-        model_parameters(original_fit$model)
-      )
-      values <- c(
-        list(
-          model = original_fit$model,
-          replicate = replicate,
-          converged = FALSE,
-          log_lik = NA_real_,
-          deviance = NA_real_
-        ),
-        parameters,
-        list(ed10 = NA_real_, ed50 = NA_real_, error = conditionMessage(cnd))
-      )
-      tibble::as_tibble_row(values)
+      # Disarm first: a limit firing inside this handler would escape it.
+      setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE)
+      message <- if (timed_out()) limit_message else conditionMessage(cnd)
+      failed_row(message)
     }
   )
 }
@@ -346,7 +398,8 @@ bootstrap_dose_response_models <- function(
   seed = NULL,
   backend = c("auto", "sequential", "mirai"),
   compute = NULL,
-  workers = NULL
+  workers = NULL,
+  replicate_time_limit = 30
 ) {
   fits <- as_fit_list(object)
   resample <- match.arg(resample)
@@ -360,7 +413,8 @@ bootstrap_dose_response_models <- function(
       seed = model_seed,
       backend = backend,
       compute = compute,
-      workers = workers
+      workers = workers,
+      replicate_time_limit = replicate_time_limit
     )
   })
 }
