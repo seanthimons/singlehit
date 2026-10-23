@@ -8,7 +8,7 @@ Description: A golem-based Shiny interface to the 'singlehit' package. It
     imports grouped dose-response data and exposes the package's model fits,
     diagnostics, and plots interactively. The app uses only exported
     'singlehit' functions.
-License: MIT + file LICENSE
+License: GPL-3
 URL: https://github.com/seanthimons/singlehit/tree/main/app
 BugReports: https://github.com/seanthimons/singlehit/issues
 Encoding: UTF-8
@@ -18,9 +18,11 @@ Depends:
 Imports:
     bslib,
     config,
+    esquisse (>= 2.0.0),
     generics,
     ggplot2,
     golem,
+    plotly,
     readr,
     shiny,
     singlehit (>= 0.2.0)

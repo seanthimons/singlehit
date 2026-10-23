@@ -9,4 +9,5 @@ app_server <- function(input, output, session) {
   analysis <- mod_fit_server("fit", data)
   mod_compare_server("compare", analysis)
   mod_figures_server("figures", analysis)
+  mod_explore_server("explore", analysis)
 }

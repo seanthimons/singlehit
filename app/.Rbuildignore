@@ -8,3 +8,4 @@ $run_dev.*
 ^app\.R$
 ^README\.md$
 ^rsconnect$
+^LICENSE\.md$
