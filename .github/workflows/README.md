@@ -43,10 +43,14 @@ The release caller respects that policy:
    publishes the release. It does not bump the version or regenerate NEWS.
 
 Keep `dry-run: true` for validation; it remains the manual default. PRs that
-change `release.yaml` automatically validate preparation with dry-run enabled.
+change `release.yaml` or `.github/scripts/filter-app-news.R` automatically validate
+preparation with dry-run enabled.
 Fork PRs skip this job because they cannot receive `RELEASE_PAT`. The old
 `version_type` input is replaced by `version-type`; `none` is unsupported.
-No missing NEWS postprocessor is referenced.
+After autonewsmd writes NEWS.md, `.github/scripts/filter-app-news.R` removes entries for
+commits scoped `app` or touching only `app/`, since the Shiny app is not part of
+the package. NEWS.md is regenerated from history each release, so this also
+removes those entries from earlier versions' sections.
 
 If branch push succeeds but PR creation fails, open a PR from the existing
 `release/vVERSION` branch. If publication fails after the tag push, rerun
