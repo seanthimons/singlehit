@@ -51,3 +51,16 @@ bounded_number <- function(x, lower, upper, default) {
   }
   min(max(x, lower), upper)
 }
+
+#' The view to switch to when confidence bands become available
+#'
+#' The overlay never draws bands, so someone looking at it right after a
+#' bootstrap would see no change and conclude the bands did not apply.
+#'
+#' @param type The currently selected view.
+#' @param has_bands Whether the analysis now carries bootstraps.
+#' @return The view to switch to, or `NULL` to leave the choice alone.
+#' @noRd
+view_for_bands <- function(type, has_bands) {
+  if (isTRUE(has_bands) && identical(type, "overlay")) "panels" else NULL
+}

@@ -50,3 +50,17 @@ test_that("residuals pair each model with fitted values and deviance residuals",
   expect_true(all(c("dose", "response", ".fitted", ".resid") %in% names(residuals)))
   expect_equal(nrow(residuals), 6L)
 })
+
+test_that("the bands preset names columns the Fitted curves data actually has", {
+  curves <- explore_datasets(analysis_with_bands())$curves
+  expect_true(all(unlist(bands_preset$aesthetics) %in% names(curves)))
+  expect_true(bands_preset$geom %in% c("ribbon", "area"))
+})
+
+test_that("mapping_matches() compares esquisse's slot mapping with the wanted variables", {
+  wanted <- list(xvar = "dose", yvar = "estimate")
+  expect_true(mapping_matches(list(xvar = "dose", yvar = "estimate", fill = character()), wanted))
+  expect_false(mapping_matches(list(xvar = "dose", yvar = "other"), wanted))
+  expect_false(mapping_matches(list(xvar = "dose"), wanted))
+  expect_false(mapping_matches(NULL, wanted))
+})

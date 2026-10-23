@@ -18,7 +18,9 @@ mod_fit_ui <- function(id) {
       selected = c("exponential", "beta_poisson")
     ),
     numericInput(ns("alpha"), "Significance level (alpha)", value = 0.05, min = 0.001, max = 0.5, step = 0.01),
-    actionButton(ns("run"), "Run analysis", class = "btn-primary")
+    # A task button turns busy the moment it is clicked, in the browser, so it
+    # still shows something while the server is too busy to answer.
+    bslib::input_task_button(ns("run"), "Run analysis", label_busy = "Fitting models...")
   )
 }
 

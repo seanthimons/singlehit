@@ -58,3 +58,15 @@ test_that("changing the data clears the previous analysis", {
     expect_null(session$returned())
   })
 })
+
+test_that("the Ward example: exponential fits badly and beta-Poisson is recommended", {
+  shiny::testServer(mod_fit_server, args = list(data = shiny::reactiveVal(ward_data())), {
+    session$setInputs(models = c("exponential", "beta_poisson"), alpha = 0.05, run = 1)
+    analysis <- session$returned()
+    expect_s3_class(analysis, "qdr_analysis")
+    expect_true(analysis$trend$passes)
+    expect_equal(headline_decision(analysis$assessment)$model, "Beta-Poisson")
+    exponential <- analysis$goodness_of_fit[analysis$goodness_of_fit$model == "exponential", ]
+    expect_false(exponential$good_fit)
+  })
+})

@@ -8,7 +8,7 @@ depends on the app.
 
 ## What it does today
 
-- **Data:** upload a delimited file or use the bundled example, with optional
+- **Data:** upload a delimited file or use the bundled Ward rotavirus example, with optional
   column mapping when names are not recognized automatically.
 - **Fit:** choose at least two models (exponential, beta-Poisson, exact
   beta-Poisson), see the dose-trend test, parameter estimates, and goodness of
@@ -17,22 +17,37 @@ depends on the app.
   deviance comparison), the assessment table, and the experimental consensus
   vote, labelled as such.
 
+- **Bootstrap:** percentile confidence intervals, run in the background on a
+  shared pool of workers (a progress bar per model, a Cancel button, and a
+  default of 1,000 replicates; the exact model has its own smaller budget, as
+  it is much slower). When a run finishes, confidence bands appear on the
+  Plots and Explore tabs.
 - **Plots:** the model overlay, one panel per model, or a single model, with PNG
-  download. Confidence bands will appear in the panel and single-model views
-  once the planned bootstrap support lands; the overlay never draws bands.
+  download. Confidence bands appear in the panel and single-model views once a
+  bootstrap has been run; the overlay never draws bands.
 
 - **Explore:** build your own plots interactively with
   [esquisse](https://dreamrs.github.io/esquisse/) by dragging variables onto
   aesthetics. Choose the observed dose groups, the fitted curves, or the
-  residuals. Turn on "Use {plotly} to render plot" under Options for hover and zoom.
+  residuals. Once a bootstrap has been run, "Draw confidence bands" fills in a
+  ribbon plot of the fitted curves on a log dose axis (it drives esquisse's
+  inputs, so it was written against esquisse 2.1.0; if a later esquisse renames
+  them it switches to the fitted curves but leaves the plot unfilled). Turn on
+  "Use {plotly} to render plot" under Options for hover and zoom.
   The interface font is overridden in `inst/app/www/custom.css`.
 
-Bootstrap uncertainty, pooling, and export are planned.
+Pooling and export are planned.
 
 ## License
 
 The app is licensed under GPL-3 (see `LICENSE.md`) because it imports esquisse,
 which is GPL-3. The `singlehit` package itself stays MIT.
+
+## Requires singlehit 0.3.0 or later
+
+The Bootstrap and Plots tabs use `singlehit` functions (`add_bootstrap()`,
+`bootstrap_progress()`) that were added in 0.3.0, so install `singlehit` 0.3.0
+or later (for example from GitHub with `pak::pak("seanthimons/singlehit")`).
 
 ## Running during development
 

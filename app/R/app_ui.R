@@ -7,6 +7,10 @@
 app_ui <- function(request) {
   tagList(
     golem_add_external_resources(),
+    # A pulse bar across the top while the server is busy, and spinners on
+    # outputs that are recalculating. R is single threaded, so a long fit or a
+    # run starting can make the app unresponsive; this says why.
+    shiny::useBusyIndicators(),
     bslib::page_navbar(
       title = "singlehit",
       bslib::nav_panel(
@@ -18,6 +22,7 @@ app_ui <- function(request) {
         bslib::layout_sidebar(sidebar = bslib::sidebar(mod_fit_ui("fit")), mod_fit_results_ui("fit"))
       ),
       bslib::nav_panel("Compare", mod_compare_ui("compare")),
+      bslib::nav_panel("Bootstrap", mod_bootstrap_ui("bootstrap")),
       bslib::nav_panel("Plots", mod_figures_ui("figures")),
       bslib::nav_panel("Explore", mod_explore_ui("explore"))
     )

@@ -48,3 +48,11 @@ test_that("bounded_number clamps and falls back", {
   expect_equal(bounded_number(NA_real_, 2, 20, 7), 7)
   expect_equal(bounded_number(NULL, 2, 20, 7), 7)
 })
+
+test_that("new bands move someone off the overlay, which never draws them, and nothing else", {
+  expect_equal(view_for_bands("overlay", TRUE), "panels")
+  expect_null(view_for_bands("overlay", FALSE))
+  expect_null(view_for_bands("panels", TRUE))
+  expect_null(view_for_bands("single", TRUE))
+  expect_null(view_for_bands(NULL, TRUE))
+})
