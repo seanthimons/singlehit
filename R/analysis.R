@@ -23,6 +23,8 @@
 #'   [bootstrap_dose_response()].
 #' @param check_trend Warn when an increasing trend is not detected.
 #' @param alpha Significance level for trend and goodness-of-fit tests.
+#' @param replicate_time_limit Seconds one bootstrap replicate may run before it
+#'   is recorded as not converged, passed to [bootstrap_dose_response()].
 #'
 #' @return A `qdr_analysis` object containing standardized data, trend test,
 #'   model fits, diagnostics, parsed assessment, comparison, and bootstrap
@@ -39,13 +41,15 @@ analyze_dose_response <- function(
   compute = NULL,
   workers = NULL,
   check_trend = TRUE,
-  alpha = 0.05
+  alpha = 0.05,
+  replicate_time_limit = 30
 ) {
   data <- as_dose_response(data)
   resample <- match.arg(resample)
   backend <- match.arg(backend)
   validate_bootstrap_times(bootstrap_times, "bootstrap_times")
   validate_bootstrap_times(exact_bootstrap_times, "exact_bootstrap_times")
+  validate_replicate_time_limit(replicate_time_limit)
   fits <- fit_dose_response_models(data, models = models, check_trend = check_trend, alpha = alpha)
 
   # Bootstrap each fitted model with its own replicate count: the exact model is
@@ -64,7 +68,8 @@ analyze_dose_response <- function(
       seed = model_seed,
       backend = backend,
       compute = compute,
-      workers = workers
+      workers = workers,
+      replicate_time_limit = replicate_time_limit
     )
   })
   bootstraps <- purrr::compact(bootstraps)

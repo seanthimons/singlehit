@@ -11,7 +11,8 @@ bootstrap_dose_response(
   seed = NULL,
   backend = c("auto", "sequential", "mirai"),
   compute = NULL,
-  workers = NULL
+  workers = NULL,
+  replicate_time_limit = 30
 )
 }
 \arguments{
@@ -35,6 +36,16 @@ backend.}
 \item{workers}{Number of temporary local mirai daemons. \code{NULL} uses 75\% of
 detected physical cores, with a minimum of one. Ignored when using existing
 daemons or the sequential backend.}
+
+\item{replicate_time_limit}{Seconds one replicate's refit may run before it is
+abandoned and recorded as not converged, with the reason in its \code{error}
+column. The default is 30; use \code{Inf} for no limit. Some resamples, such as
+one where every dose above a point responds and every dose below does not,
+can send the exact beta-Poisson optimiser searching for minutes; the limit
+keeps one such replicate from holding up the whole run. The limit is wall
+time, so on a heavily loaded machine a slow replicate can time out that would
+finish elsewhere. A finite limit also replaces any \code{\link[=setTimeLimit]{setTimeLimit()}} already
+set in the process that runs the refit.}
 }
 \value{
 A \code{qdr_bootstrap} tibble with one row per replicate.
