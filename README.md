@@ -30,6 +30,18 @@ a separate package that depends on `singlehit`; installing `singlehit` does not
 install or require it. The app is licensed under GPL-3, while `singlehit`
 remains MIT.
 
+## Prerequisites
+
+Check that your data can be fitted before you start. `singlehit` needs:
+
+- **at least 3 distinct doses**, each greater than zero;
+- **more than 1 positive response in total**, summed across all doses; and
+- **counts of positive and negative subjects** for every dose, not just a
+  response proportion. Every dose group must contain at least one subject.
+
+Data that fail these checks are rejected with an explanatory error. See
+[Input data format](#input-data-format) for column names and the full rules.
+
 ## Installation
 
 <!--
@@ -215,6 +227,65 @@ Check that hosts, dose units, and endpoints match before testing poolability;
 the current pooling functions do not enforce those checks. Recording matching
 metadata does not by itself establish that experiments should be pooled.
 
+## Bootstrapping and run time
+
+The bootstrap refits each model to thousands of resampled datasets to put
+uncertainty bounds on the results. The exact beta-Poisson fit and large
+bootstraps (thousands of replicates) can take minutes to hours, depending on
+your computer. Start with a small number of replicates (for example
+`bootstrap_times = 200`) to check your pipeline, then scale up.
+
+### Parallel bootstraps (mirai)
+
+[mirai](https://mirai.r-lib.org/) runs the bootstrap refits on background R
+processes, so the run finishes sooner on a multi-core machine and the R console
+can stay free while it works. It is optional: with the default settings,
+bootstraps above 1,000 replicates use it when it is installed, and otherwise run
+one after another in your current R session. Using mirai can reduce the wait.
+
+Mirai also works after `devtools::load_all()`: local workers load the same
+checkout before starting the bootstrap.
+
+Bootstrap runs above 1,000 replicates automatically use mirai when it is
+installed and show completion progress while results are collected. If no
+daemons are already configured, the package starts a temporary
+pool using 75% of the machine's detected physical cores and removes that pool
+after collecting the result. Supply `workers` to override that default:
+
+```r
+analysis <- analyze_dose_response(
+  ward,
+  bootstrap_times = 10000,
+  seed = 2026,
+  workers = 12
+)
+```
+
+Existing mirai daemons are reused and remain under caller control. Use
+`backend = "sequential"` to disable automatic parallelization, or configure a
+pool explicitly:
+
+```r
+mirai::daemons(4)
+analysis <- analyze_dose_response(ward, bootstrap_times = 10000)
+mirai::daemons(0)
+```
+
+Bootstrap samples are generated before parallel dispatch, so the same `seed`
+produces identical results with `backend = "sequential"` and
+`backend = "mirai"`. Only the model refits are sent to workers.
+
+For a non-blocking bootstrap, start a job and collect it when the result is
+needed:
+
+```r
+fit <- fit_dose_response(ward, "beta_poisson")
+job <- bootstrap_dose_response_async(fit, times = 10000, seed = 2026)
+
+# The R console is available while daemons fit the bootstrap samples.
+result <- collect_bootstrap(job)
+```
+
 ## Example
 
 ```r
@@ -256,7 +327,9 @@ parameterized in `alpha`/`beta`) is available as a deliberate opt-in via the
 assessment, consensus, and plotting. Because it is roughly an order of magnitude
 slower to fit, its bootstrap replicate count is controlled separately
 (`exact_bootstrap_times`, default 10000; set to zero to fit and compare it
-without bootstrapping):
+without bootstrapping). The exact fit and its bootstrap are the slowest
+part of the workflow, so see [Bootstrapping and run time](#bootstrapping-and-run-time)
+before running large replicate counts:
 
 ```r
 analysis <- analyze_dose_response(
@@ -358,51 +431,6 @@ At `alpha = 0.05`, A+B passes for both models, while A+C, B+C, and A+B+C fail.
 All fits converge, and exhaustive grouping puts A and B together with C separate.
 A and B are candidates for a shared fit; keep C separate. This pooling decision
 does not establish adequate absolute model fit or create a pooled analysis.
-
-### Parallel bootstraps (mirai)
-
-Mirai also works after `devtools::load_all()`: local workers load the same
-checkout before starting the bootstrap.
-
-Bootstrap runs above 1,000 replicates automatically use mirai when it is
-installed and show completion progress while results are collected. If no
-daemons are already configured, the package starts a temporary
-pool using 75% of the machine's detected physical cores and removes that pool
-after collecting the result. Supply `workers` to override that default:
-
-```r
-analysis <- analyze_dose_response(
-  ward,
-  bootstrap_times = 10000,
-  seed = 2026,
-  workers = 12
-)
-```
-
-Existing mirai daemons are reused and remain under caller control. Use
-`backend = "sequential"` to disable automatic parallelization, or configure a
-pool explicitly:
-
-```r
-mirai::daemons(4)
-analysis <- analyze_dose_response(ward, bootstrap_times = 10000)
-mirai::daemons(0)
-```
-
-Bootstrap samples are generated before parallel dispatch, so the same `seed`
-produces identical results with `backend = "sequential"` and
-`backend = "mirai"`. Only the model refits are sent to workers.
-
-For a non-blocking bootstrap, start a job and collect it when the result is
-needed:
-
-```r
-fit <- fit_dose_response(ward, "beta_poisson")
-job <- bootstrap_dose_response_async(fit, times = 10000, seed = 2026)
-
-# The R console is available while daemons fit the bootstrap samples.
-result <- collect_bootstrap(job)
-```
 
 ## Development
 
