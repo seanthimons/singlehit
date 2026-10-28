@@ -14,6 +14,7 @@ library_fields <- c(
   "Dose unit" = "dose_unit",
   "Host" = "host_group",
   "Exposure route" = "route_group",
+  "Strain or isolate" = "strain",
   "Preferred model" = "model_label"
 )
 
@@ -28,7 +29,7 @@ library_fields <- c(
 #' @return A data frame with the original metadata, numeric `dose`, `positive`,
 #'   and `negative` (`NA` in the single row kept for an experiment that reports
 #'   only parameters), and the normalised columns `experiment_key`, `category`,
-#'   `outcome_group`, `dose_unit`, `host_group`, `route_group`, `model`,
+#'   `outcome_group`, `dose_unit`, `host_group`, `route_group`, `strain`, `model`,
 #'   `model_label`, and `wiki_pooled`.
 #' @noRd
 read_qmra_workbook <- function(path) {
@@ -42,6 +43,9 @@ read_qmra_workbook <- function(path) {
   if (length(missing) > 0L) {
     stop(sprintf("The \"raw data\" sheet is missing: %s.", paste(missing, collapse = ", ")), call. = FALSE)
   }
+  # Optional: the agent strain or isolate, often what separates experiments
+  # on the same pathogen (Cryptosporidium Iowa, TAMU, and UCP isolates).
+  strain <- if ("Agent Strain" %in% names(raw)) raw[["Agent Strain"]] else rep(NA_character_, nrow(raw))
   raw <- as.data.frame(raw[library_required_columns], stringsAsFactors = FALSE)
   rows <- data.frame(
     experiment_id = trimws(as.character(raw$experiment_id)),
@@ -54,6 +58,7 @@ read_qmra_workbook <- function(path) {
     host_group = library_host_group(raw[["Host type"]]),
     route = trimws(as.character(raw[["Exposure route"]])),
     route_group = library_route_group(raw[["Exposure route"]]),
+    strain = library_strain(strain),
     preferred_model = trimws(as.character(raw[["Preferred model"]])),
     model = library_model(raw[["Preferred model"]]),
     parameters = as.character(raw[["Optimized parameters"]]),
@@ -105,6 +110,13 @@ library_outcome_group <- function(x) {
 
 #' @noRd
 library_dose_unit <- function(x) {
+  x <- trimws(as.character(x))
+  x[is.na(x) | !nzchar(x) | toupper(x) == "NR"] <- "Not reported"
+  x
+}
+
+#' @noRd
+library_strain <- function(x) {
   x <- trimws(as.character(x))
   x[is.na(x) | !nzchar(x) | toupper(x) == "NR"] <- "Not reported"
   x
@@ -205,6 +217,7 @@ library_experiments <- function(rows) {
     host_group = first$host_group,
     route = first$route,
     route_group = first$route_group,
+    strain = first$strain,
     model = first$model,
     model_label = first$model_label,
     wiki_pooled = first$wiki_pooled,

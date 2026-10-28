@@ -40,9 +40,10 @@ depends on the app.
   The interface font is overridden in `inst/app/www/custom.css`.
 
 - **Library:** explores the QMRA wiki workbook (`.xlsx`, "raw data" sheet),
-  or the bundled 14-experiment sample, loaded on the Data tab, and is the
+  or the bundled 18-experiment sample, loaded on the Data tab, and is the
   starting point for pooling. Filter experiments by pathogen group,
-  pathogen, outcome group, dose unit, host, exposure route, and preferred model,
+  pathogen, outcome group, dose unit, host, exposure route, strain or isolate,
+  and preferred model,
   and draw every experiment's preferred model on one log-dose plot, faceted and
   coloured by any of those fields. Curves are refit from the counts; experiments
   the workbook reports only as parameters are drawn from those (dashed). Dose
@@ -63,15 +64,40 @@ depends on the app.
   `fit_pooled_dose_response()`. Before running you must write why the
   experiments belong together, and every run is kept in a session log (with
   the rationale, the warnings you ran past, and the p-values) that downloads
-  as CSV and counts how many unadjusted tests have been run. The log lasts the whole
-  session, across workbooks, and the rationale clears whenever the pooling set
-  or workbook changes, so each set gets its own justification. Results show the test with the caveat that "not rejected"
+  as CSV and counts how many unadjusted tests have been run. The log lasts
+  the whole session, across workbooks, and the rationale clears whenever the
+  pooling set or workbook changes, so each set gets its own justification.
+  Results show the test with the caveat that "not rejected"
   is not evidence of equivalence, each experiment's own fit against the pooled
   fit, the spread of the parameter estimates, and the wiki's own pooled entry
   when the chosen experiments match one (21 + 23 for Burkholderia mallei
-  reproduces the wiki's "21,23"). The data-driven `group_datasets()` and
-  `poolability_combinations()` are deliberately not offered: picking groups
-  from the fits is the forking path described in #20.
+  reproduces the wiki's "21,23"). "Send pooled data to Data and Fit" then
+  makes the tested set one dataset for Fit, Compare, Bootstrap, and Plots.
+  singlehit adds up counts at doses the experiments share, so the fitted
+  parameters match the pooled fit but goodness of fit and the bootstrap use
+  the merged dose groups, while the test keeps each experiment's rows apart.
+
+  An **exploratory** section runs singlehit's `group_datasets()` on the set
+  (every pairwise test as a heatmap, then a grouping over all ways to split
+  up to six experiments, or greedy merges for up to 12) and lets you take a
+  group it finds as the pooling set. This is the data-driven grouping #20
+  warns about, so it is labelled exploratory and every exploration is logged
+  with how many tests it made. A set taken from it, or any set lying within
+  one already explored this session however it was chosen, is marked
+  data-informed in the tab, the log, and the label of pooled data sent to
+  Fit: its test is biased toward pooling. On the sample's Cryptosporidium
+  experiments the exponential grouping roughly follows the isolate (Iowa
+  together, TAMU alone, UCP with Moredun), while the beta-Poisson grouping
+  does not, which is why the isolate is the kind of grouping to decide in
+  advance rather than read off the exploration. A "How to read this
+  heatmap" note under the plot summarises the interpretation; the
+  [pooling article](https://seanthimons.github.io/singlehit/articles/pooling.html)
+  works through it in full.
+
+  Neither the checks nor the test can tell when two entries report the same
+  subjects. Experiments 108 and 139 (both Iowa isolate) have identical counts
+  at six of eight doses, so pooling them, or sending them to Fit, where counts
+  at shared doses are added, would count the same volunteers twice.
 
   **The checks are a tunable pinch point.** They live in one table,
   `pool_rules` in `R/fct_pooling.R`, and are a first, loose cut to be revised.
@@ -79,8 +105,8 @@ depends on the app.
   that cannot be fitted, double counting (an entry the wiki already pooled,
   the same experiment twice, identical counts), and dose units that differ or
   are not reported (singlehit itself also refuses mixed units). Different
-  outcomes, hosts, routes, or pathogens only warn, because the wiki itself
-  pools across hosts and routes.
+  outcomes, hosts, routes, strains, or pathogens only warn, because the wiki
+  itself pools across hosts and routes.
 
 Hierarchical (family-level) models, bootstrap intervals for pooled fits, and
 export are planned.

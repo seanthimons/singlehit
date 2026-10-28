@@ -20,7 +20,7 @@ mod_upload_ui <- function(id) {
     actionButton(ns("sample_workbook"), "Use QMRA wiki sample workbook"),
     p(
       class = "text-muted small mt-1",
-      "14 experiments cut down from the QMRA wiki workbook, for demos and testing. Data compiled from the ",
+      "18 experiments cut down from the QMRA wiki workbook, for demos and testing. Data compiled from the ",
       a("QMRA wiki", href = "https://qmrawiki.org", target = "_blank"),
       "; see each row's reference."
     ),
@@ -135,7 +135,8 @@ mod_upload_server <- function(id, incoming = reactive(NULL)) {
     )
     observeEvent(incoming(), {
       sent <- incoming()
-      load_source(list(data = sent$data, label = paste(sent$label, "from the Library tab")))
+      from <- if (is.null(sent$source)) "Library tab" else sent$source
+      load_source(list(data = sent$data, label = paste0(sent$label, " (from the ", from, ")")))
     })
 
     # Same reader settings as singlehit::read_dose_response(), so the offered

@@ -18,11 +18,15 @@ app_server <- function(input, output, session) {
     bslib::nav_select("main", "Data", session = session)
   })
   observeEvent(upload$workbook_loaded(), bslib::nav_select("main", "Library", session = session), ignoreInit = TRUE)
-  mod_pooling_server(
+  pooling <- mod_pooling_server(
     "pooling", upload$workbook, library_tab$experiments, library_tab$pool_set,
     upload$workbook_name, upload$workbook_loaded
   )
   observeEvent(library_tab$pool_set(), bslib::nav_select("main", "Pooling", session = session))
+  observeEvent(pooling$sent(), {
+    sent(pooling$sent())
+    bslib::nav_select("main", "Data", session = session)
+  })
   analysis <- mod_fit_server("fit", data)
   mod_compare_server("compare", analysis)
   # Plots and Explore get the analysis with the bootstraps attached once a run

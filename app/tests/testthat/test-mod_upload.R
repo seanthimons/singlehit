@@ -66,7 +66,7 @@ test_that("data sent from the Library tab load without a file", {
     result <- session$returned$data()
     expect_equal(result$dose, c(1, 10, 100))
     expect_equal(unique(result$dose_unit), "CFU")
-    expect_match(loaded()$label, "Test experiment from the Library tab")
+    expect_equal(loaded()$label, "Test experiment (from the Library tab)")
 
     # Loading the example afterwards replaces the library data.
     session$setInputs(example = 1)
@@ -79,7 +79,7 @@ test_that("the sample workbook loads as a workbook and leaves the dataset alone"
   shiny::testServer(mod_upload_server, {
     session$setInputs(example = 1)
     session$setInputs(sample_workbook = 1)
-    expect_equal(length(unique(session$returned$workbook()$experiment_key)), 14L)
+    expect_equal(length(unique(session$returned$workbook()$experiment_key)), 18L)
     expect_equal(session$returned$workbook_loaded(), 1L)
     expect_equal(nrow(session$returned$data()), 8L)
 
@@ -92,7 +92,7 @@ test_that("the sample workbook loads as a workbook and leaves the dataset alone"
 test_that("an uploaded .xlsx is read as a workbook, whatever the case of its extension", {
   shiny::testServer(mod_upload_server, {
     session$setInputs(file = list(datapath = qmra_sample_path(), name = "QMRA.XLSX"))
-    expect_equal(length(unique(session$returned$workbook()$experiment_key)), 14L)
+    expect_equal(length(unique(session$returned$workbook()$experiment_key)), 18L)
     expect_null(loaded())
   })
 })
@@ -117,7 +117,7 @@ test_that("a bad workbook reports an error and keeps the previous workbook", {
     session$setInputs(sample_workbook = 1)
     session$setInputs(file = list(datapath = bad, name = "bad.xlsx"))
     expect_match(workbook_error(), "raw data")
-    expect_equal(length(unique(session$returned$workbook()$experiment_key)), 14L)
+    expect_equal(length(unique(session$returned$workbook()$experiment_key)), 18L)
     expect_equal(session$returned$workbook_loaded(), 1L)
 
     # The error is stale once a dataset loads.

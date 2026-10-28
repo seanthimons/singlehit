@@ -26,6 +26,7 @@ mod_library_ui <- function(id) {
       filter("dose_unit", "Dose unit"),
       filter("host_group", "Host"),
       filter("route_group", "Exposure route"),
+      filter("strain", "Strain or isolate"),
       filter("model_label", "Preferred model"),
       checkboxInput(ns("hide_wiki_pooled"), "Hide entries the wiki already pooled", value = FALSE),
       hr(),
@@ -76,7 +77,7 @@ mod_library_ui <- function(id) {
 #' @noRd
 mod_library_server <- function(id, rows) {
   moduleServer(id, function(input, output, session) {
-    filters <- c("category", "pathogen", "outcome_group", "dose_unit", "host_group", "route_group", "model_label")
+    filters <- c("category", "pathogen", "outcome_group", "dose_unit", "host_group", "route_group", "strain", "model_label")
     loaded <- reactive({
       req(rows())
       rows()
@@ -176,6 +177,7 @@ mod_library_server <- function(id, rows) {
         `Dose unit` = shown$dose_unit,
         Host = shown$host,
         Route = shown$route,
+        Strain = shown$strain,
         `Preferred model` = shown$model_label,
         Doses = shown$doses,
         Subjects = format(shown$subjects, big.mark = ","),
@@ -212,6 +214,7 @@ mod_library_server <- function(id, rows) {
       sent(list(
         data = library_experiment_data(loaded(), experiment$experiment_key),
         label = library_experiment_label(experiment),
+        source = "Library tab",
         sent = count()
       ))
     })

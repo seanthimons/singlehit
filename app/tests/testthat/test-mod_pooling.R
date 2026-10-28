@@ -126,3 +126,111 @@ test_that("loading a different workbook does not trip over the old selection", {
     expect_equal(keys(), character())
   })
 })
+
+crypto_keys <- function(experiments) experiments$experiment_key[grepl("Cryptosporidium", experiments$pathogen)]
+
+test_that("a group taken from an exploration is marked data-informed and needs a rationale", {
+  args <- pooling_args()
+  shiny::testServer(mod_pooling_server, args = args, {
+    args$pool_set(list(keys = crypto_keys(experiments()), sent = 1L))
+    session$flushReact()
+    session$setInputs(models = c("exponential", "beta_poisson"), alpha = 0.05)
+    session$setInputs(explore = 1)
+    expect_false(inherits(exploration()$explore, "error"))
+    expect_equal(unique(log()$kind), "exploration")
+    # The first exploration of a Library set is logged as a Library set.
+    expect_equal(unique(log()$set_origin), "Library")
+
+    choices <- pool_group_choices(exploration()$explore)
+    session$setInputs(group = choices[[1L]], use_group = 1)
+    expect_equal(sub("\\|.*", "", keys()), c("108", "139"))
+    expect_equal(set_origin(), "exploratory grouping (Exponential)")
+    expect_false(ready())
+
+    session$setInputs(rationale = "Both Iowa isolate.")
+    session$setInputs(run = 1)
+    tests <- log()[log()$kind == "test", ]
+    expect_equal(unique(tests$set_origin), "exploratory grouping (Exponential)")
+
+    session$setInputs(send = 1)
+    expect_match(unique(session$returned$sent()$data$study_id), "\\[data-informed set\\]$")
+  })
+})
+
+test_that("re-picking an explored set on the Library tab stays data-informed", {
+  args <- pooling_args()
+  shiny::testServer(mod_pooling_server, args = args, {
+    all <- crypto_keys(experiments())
+    args$pool_set(list(keys = all, sent = 1L))
+    session$flushReact()
+    session$setInputs(models = "exponential", alpha = 0.05)
+    session$setInputs(explore = 1)
+
+    args$pool_set(list(keys = all[1:2], sent = 2L))
+    session$flushReact()
+    expect_equal(set_origin(), "Library, within a set explored this session")
+  })
+})
+
+test_that("pooled data are sent on after a test, with their origin in the label", {
+  args <- pooling_args()
+  shiny::testServer(mod_pooling_server, args = args, {
+    args$pool_set(list(keys = crypto_keys(experiments())[1:2], sent = 1L))
+    session$flushReact()
+    session$setInputs(models = "exponential", alpha = 0.05, rationale = "Both Iowa isolate.")
+    session$setInputs(send = 1)
+    expect_null(session$returned$sent())
+
+    session$setInputs(run = 1)
+    session$setInputs(send = 2)
+    sent <- session$returned$sent()
+    expect_equal(sent$source, "Pooling tab")
+    expect_match(sent$label, "^Pooled: ")
+    expect_no_error(singlehit::as_dose_response(sent$data))
+    expect_true("sent to Fit" %in% log()$kind)
+  })
+})
+
+test_that("reloading the workbook does not clear what was explored", {
+  args <- pooling_args()
+  shiny::testServer(mod_pooling_server, args = args, {
+    all <- crypto_keys(experiments())
+    args$pool_set(list(keys = all, sent = 1L))
+    session$flushReact()
+    session$setInputs(models = "exponential", alpha = 0.05)
+    session$setInputs(explore = 1)
+
+    args$workbook_loaded(2L)
+    session$flushReact()
+    args$pool_set(list(keys = all[1:2], sent = 2L))
+    session$flushReact()
+    expect_equal(set_origin(), "Library, within a set explored this session")
+  })
+})
+
+test_that("the status counts an exploration's pairwise tests and says they are unadjusted", {
+  args <- pooling_args()
+  shiny::testServer(mod_pooling_server, args = args, {
+    args$pool_set(list(keys = crypto_keys(experiments()), sent = 1L))
+    session$flushReact()
+    session$setInputs(models = c("exponential", "beta_poisson"), alpha = 0.05)
+    expect_false(grepl("adjusted", output$log_status$html))
+    session$setInputs(explore = 1)
+    # Five experiments: 10 pairs under each of two models.
+    expect_match(output$log_status$html, "20 pairwise tests")
+    expect_match(output$log_status$html, "None of the p-values are adjusted")
+  })
+})
+
+test_that("the exploration shows how to read the heatmap", {
+  args <- pooling_args()
+  shiny::testServer(mod_pooling_server, args = args, {
+    args$pool_set(list(keys = crypto_keys(experiments()), sent = 1L))
+    session$flushReact()
+    session$setInputs(models = "exponential", alpha = 0.05)
+    session$setInputs(explore = 1)
+    html <- output$explore_results$html
+    expect_match(html, "How to read this heatmap")
+    expect_match(html, "articles/pooling.html")
+  })
+})

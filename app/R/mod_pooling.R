@@ -37,7 +37,8 @@ mod_pooling_ui <- function(id) {
     ),
     uiOutput(ns("empty")),
     uiOutput(ns("selection_ui")),
-    uiOutput(ns("results_ui"))
+    uiOutput(ns("results_ui")),
+    uiOutput(ns("explore_ui"))
   )
 }
 
@@ -50,7 +51,8 @@ mod_pooling_ui <- function(id) {
 #' @param workbook_name Reactive returning where the workbook came from.
 #' @param workbook_loaded Reactive counter that changes on every workbook load,
 #'   including reloading the same file, which leaves `rows()` unchanged.
-#' @return Nothing useful; the log is kept in the session.
+#' @return A list with `sent`: `NULL` until pooled data are sent to the Data
+#'   tab, then a list of `data`, `label`, `source`, and `sent` (a counter).
 #' @noRd
 mod_pooling_server <- function(id, rows, experiments, pool_set, workbook_name = reactive(NULL), workbook_loaded = reactive(0L)) {
   moduleServer(id, function(input, output, session) {
@@ -62,17 +64,47 @@ mod_pooling_server <- function(id, rows, experiments, pool_set, workbook_name = 
     # A rationale is written for one set of experiments. After the set or the
     # workbook changes, the old text no longer counts until it is edited.
     rationale_stale <- reactiveVal(FALSE)
+    # Where the current set came from, every set of experiments explored this
+    # session, and the exploration of the current set.
+    origin <- reactiveVal("Library")
+    explored <- reactiveVal(list())
+    exploration <- reactiveVal(NULL)
+    sent <- reactiveVal(NULL)
 
-    start_over <- function(new_keys) {
+    start_over <- function(new_keys, from = "Library") {
       keys(new_keys)
+      origin(from)
       result(NULL)
+      exploration(NULL)
       rationale_stale(TRUE)
       updateTextAreaInput(session, "rationale", value = "")
     }
     # Ahead of the other observers, so nothing reads the new workbook with the
     # previous workbook's keys.
+    # Explored sets are kept across workbook loads, like the log: reloading
+    # must not make a data-informed set look prespecified.
     observeEvent(workbook_loaded(), start_over(character()), priority = 1)
     observeEvent(pool_set(), start_over(pool_set()$keys), priority = 1)
+
+    # A set chosen from an exploration, or lying within a set already explored
+    # (however it was chosen), is data-informed: its test p-values are biased
+    # toward pooling. Re-picking the same experiments on the Library tab does
+    # not reset this.
+    set_origin <- reactive({
+      if (origin() != "Library") {
+        origin()
+      } else if (pool_data_informed(keys(), explored())) {
+        "Library, within a set explored this session"
+      } else {
+        "Library"
+      }
+    })
+
+    append_log <- function(entry) {
+      previous <- log()
+      entry <- cbind(run = if (is.null(previous)) 1L else max(previous$run) + 1L, entry)
+      log(rbind(previous, entry))
+    }
     observeEvent(input$rationale, rationale_stale(FALSE), ignoreInit = TRUE)
 
     selection <- reactive({
@@ -99,6 +131,15 @@ mod_pooling_server <- function(id, rows, experiments, pool_set, workbook_name = 
     output$selection_ui <- renderUI({
       req(nrow(selection()) > 0L)
       tagList(
+        if (set_origin() != "Library") {
+          div(
+            class = "alert alert-warning",
+            strong("Data-informed set. "),
+            sprintf("Source: %s. ", set_origin()),
+            "These experiments were chosen after seeing poolability results for them, so the test below is biased",
+            "toward pooling and its p-values are not confirmatory. Say so if you report a pooled fit."
+          )
+        },
         h5("Experiments"),
         tableOutput(session$ns("selection_table")),
         h5("Checks"),
@@ -119,6 +160,7 @@ mod_pooling_server <- function(id, rows, experiments, pool_set, workbook_name = 
         `Dose unit` = shown$dose_unit,
         Host = shown$host,
         Route = shown$route,
+        Strain = shown$strain,
         Doses = shown$doses,
         Subjects = format(shown$subjects, big.mark = ","),
         check.names = FALSE
@@ -180,20 +222,26 @@ mod_pooling_server <- function(id, rows, experiments, pool_set, workbook_name = 
       })
       result(list(run = run, selection = chosen))
       if (!inherits(run, "error")) {
-        entry <- pool_log_entry(run, chosen, checks(), rationale(), workbook_name())
-        previous <- log()
-        entry <- cbind(run = if (is.null(previous)) 1L else max(previous$run) + 1L, entry)
-        log(rbind(previous, entry))
+        append_log(pool_log_entry(run, chosen, checks(), rationale(), workbook_name(), set_origin()))
       }
     })
 
     output$log_status <- renderUI({
       entries <- log()
-      tests <- if (is.null(entries)) 0L else length(unique(entries$run))
+      count <- function(kind) if (is.null(entries)) 0L else length(unique(entries$run[entries$kind == kind]))
+      tests <- count("test")
+      explorations <- count("exploration")
+      # One exploration row per model, each with that model's pairwise tests.
+      pairwise <- if (is.null(entries)) 0 else sum(entries$n_pairwise_tests[entries$kind == "exploration"])
       p(
         class = "small",
-        sprintf("%d poolability %s run this session.", tests, if (tests == 1L) "test" else "tests"),
-        if (tests > 1L) " The p-values are not adjusted for running several tests."
+        sprintf(
+          "%d poolability %s and %d %s run this session.",
+          tests, if (tests == 1L) "test" else "tests",
+          explorations, if (explorations == 1L) "exploration" else "explorations"
+        ),
+        if (explorations > 0L) sprintf(" The explorations made %d pairwise tests.", as.integer(pairwise)),
+        if (tests > 1L || explorations > 0L) " None of the p-values are adjusted for running several tests."
       )
     })
 
@@ -202,7 +250,7 @@ mod_pooling_server <- function(id, rows, experiments, pool_set, workbook_name = 
       content = function(file) {
         entries <- log()
         if (is.null(entries)) {
-          entries <- data.frame(note = "No poolability tests have been run in this session.")
+          entries <- data.frame(note = "No poolability tests or explorations have been run in this session.")
         }
         utils::write.csv(entries, file, row.names = FALSE)
       }
@@ -238,7 +286,149 @@ mod_pooling_server <- function(id, rows, experiments, pool_set, workbook_name = 
         h5("Separate and pooled fits"),
         plotOutput(session$ns("fit_plot"), height = "480px", fill = FALSE),
         h5("Spread of the estimates"),
-        plotOutput(session$ns("forest_plot"), height = "380px", fill = FALSE)
+        plotOutput(session$ns("forest_plot"), height = "380px", fill = FALSE),
+        h5("Analyse the pooled data"),
+        if (all(!run$test$poolable)) {
+          div(class = "alert alert-warning small", "The test rejected pooling under every model chosen.")
+        },
+        p(
+          class = "text-muted small",
+          "Sends the stacked experiments to the Data tab as one dataset for Fit, Compare, Bootstrap, and Plots. singlehit",
+          "adds up counts at doses the experiments share: the fitted parameters are the same as the pooled fit here,",
+          "but goodness of fit and the bootstrap use the merged dose groups, while the test above keeps each",
+          "experiment's rows separate."
+        ),
+        actionButton(session$ns("send"), "Send pooled data to Data and Fit", icon = icon("arrow-right"), class = "btn-primary")
+      )
+    })
+
+    send_count <- reactiveVal(0L)
+    observeEvent(input$send, {
+      current <- result()
+      req(current, !inherits(current$run, "error"), identical(current$selection$experiment_key, selection()$experiment_key))
+      chosen <- current$selection
+      informed <- set_origin() != "Library"
+      data <- tryCatch(pool_fit_data(pool_datasets(rows(), chosen), chosen, informed), error = function(e) e)
+      if (inherits(data, "error")) {
+        showNotification(conditionMessage(data), type = "error")
+        return()
+      }
+      send_count(send_count() + 1L)
+      label <- paste("Pooled:", paste(chosen$label, collapse = " + "))
+      if (informed) {
+        label <- paste0(label, " [data-informed set]")
+      }
+      sent(list(data = data, label = label, source = "Pooling tab", sent = send_count()))
+      append_log(pool_log_rows(
+        kind = "sent to Fit",
+        selection = chosen,
+        models = NA_character_,
+        alpha = current$run$alpha,
+        workbook = workbook_name(),
+        set_origin = set_origin()
+      ))
+    })
+
+    # Exploration -----------------------------------------------------------
+
+    output$explore_ui <- renderUI({
+      req(nrow(selection()) > 0L)
+      blocked <- pool_blocked(checks())
+      too_many <- nrow(selection()) > pool_explore_limit
+      button <- actionButton(session$ns("explore"), "Explore pairwise poolability", icon = icon("magnifying-glass"), class = "btn-outline-secondary")
+      tagList(
+        hr(),
+        h5("Exploratory: which experiments pool with which"),
+        div(
+          class = "alert alert-warning small",
+          strong("Not for choosing groups to report as pooled. "),
+          "This searches the set for mutually poolable groups (singlehit's group_datasets(): every pairwise test, then",
+          "a grouping). Groups found this way are chosen by the data, so a test of them is biased toward pooling (#20).",
+          "Each exploration is logged, and a set taken from it is marked data-informed. The exact beta-Poisson model",
+          sprintf("is left out, and at most %d experiments are searched.", pool_explore_limit)
+        ),
+        if (blocked || too_many) tagAppendAttributes(button, disabled = NA) else button,
+        if (blocked) p(class = "text-muted small mt-1", "A blocking check failed; see Checks."),
+        if (too_many) p(class = "text-muted small mt-1", sprintf("Choose at most %d experiments to explore.", pool_explore_limit)),
+        uiOutput(session$ns("explore_results"))
+      )
+    })
+
+    observeEvent(input$explore, {
+      req(!pool_blocked(checks()), nrow(selection()) <= pool_explore_limit)
+      chosen <- selection()
+      models <- if (length(input$models) > 0L) input$models else c("exponential", "beta_poisson")
+      explore <- withProgress(message = "Testing every pair and grouping", {
+        tryCatch(pool_explore(pool_datasets(rows(), chosen), models, alpha = input$alpha), error = function(e) e)
+      })
+      exploration(list(explore = explore, selection = chosen))
+      if (!inherits(explore, "error")) {
+        # Log first: set_origin() describes the set as it was before this
+        # exploration.
+        append_log(pool_explore_log_entry(explore, chosen, workbook_name(), set_origin()))
+        explored(c(explored(), list(chosen$experiment_key)))
+      }
+    })
+
+    explore_ok <- reactive({
+      current <- exploration()
+      req(current, !inherits(current$explore, "error"))
+      current
+    })
+
+    output$explore_results <- renderUI({
+      current <- exploration()
+      req(current)
+      if (inherits(current$explore, "error")) {
+        return(div(class = "alert alert-danger mt-3", "The exploration could not run: ", conditionMessage(current$explore)))
+      }
+      explore <- current$explore
+      choices <- pool_group_choices(explore)
+      tagList(
+        p(
+          class = "text-muted small mt-3",
+          sprintf(
+            "%d pairwise tests; groups by the %s method%s.",
+            explore$n * (explore$n - 1L) / 2L,
+            explore$method,
+            if (explore$method == "exhaustive") sprintf(" over all %d ways to split the set", pool_bell(explore$n)) else " (greedy merges)"
+          )
+        ),
+        if (length(explore$warnings) > 0L) {
+          div(class = "alert alert-warning small", strong("Fit warnings: "), paste(explore$warnings, collapse = " "))
+        },
+        plotOutput(session$ns("explore_plot"), height = "420px", fill = FALSE),
+        pool_heatmap_help(),
+        tableOutput(session$ns("explore_groups")),
+        if (length(choices) > 0L) {
+          div(
+            class = "d-flex flex-wrap align-items-end gap-3",
+            selectInput(session$ns("group"), "Group to test", choices = choices, width = "560px"),
+            actionButton(session$ns("use_group"), "Use this group as the pooling set", class = "btn-outline-warning mb-3")
+          )
+        } else {
+          p(class = "text-muted", "No two experiments were grouped together.")
+        }
+      )
+    })
+
+    output$explore_plot <- renderPlot(pool_explore_plot(explore_ok()$explore), res = 96)
+    output$explore_groups <- renderTable({
+      explore <- explore_ok()$explore
+      data.frame(
+        Model = model_label_ui(explore$models),
+        Groups = vapply(explore$models, function(model) pool_groups_text(explore, model), character(1L)),
+        check.names = FALSE
+      )
+    })
+
+    observeEvent(input$use_group, {
+      current <- explore_ok()
+      req(input$group %in% pool_group_choices(current$explore))
+      model <- strsplit(input$group, "::", fixed = TRUE)[[1L]][[1L]]
+      start_over(
+        pool_group_keys(current$explore, input$group, current$selection),
+        from = sprintf("exploratory grouping (%s)", model_label_ui(model))
       )
     })
 
@@ -256,6 +446,6 @@ mod_pooling_server <- function(id, rows, experiments, pool_set, workbook_name = 
     output$fit_plot <- renderPlot(pool_plot(run_ok()), res = 96)
     output$forest_plot <- renderPlot(pool_forest(run_ok()), res = 96)
 
-    invisible(NULL)
+    list(sent = sent)
   })
 }

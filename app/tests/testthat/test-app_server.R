@@ -17,3 +17,20 @@ test_that("a pooling set chosen on the Library reaches the Pooling tab", {
     expect_equal(library_tab$pool_set()$keys, keys)
   })
 })
+
+test_that("pooled data sent from the Pooling tab become the current dataset", {
+  shiny::testServer(app_server, {
+    session$setInputs(`upload-sample_workbook` = 1)
+    keys <- c(
+      "108|Cryptosporidium hominis/ Cryptosporidium parvum|infection|exponential",
+      "139|Cryptosporidium hominis/ Cryptosporidium parvum|infection|exponential"
+    )
+    session$setInputs(`library-pool_set` = keys, `library-pool` = 1)
+    session$setInputs(`pooling-models` = "exponential", `pooling-alpha` = 0.05)
+    session$setInputs(`pooling-rationale` = "Both Iowa isolate.")
+    session$setInputs(`pooling-run` = 1)
+    session$setInputs(`pooling-send` = 1)
+    expect_match(unique(data()$study_id), "^Pooled: ")
+    expect_equal(unique(data()$dose_unit), "oocysts")
+  })
+})

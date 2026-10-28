@@ -2,9 +2,9 @@
 # sample workbook" button and by the tests. The full workbook stays out of the
 # repository; this keeps only the "raw data" sheet, only count and metadata
 # columns, and a handful of experiments chosen to cover each pathogen group,
-# several dose units, both preferred models, a wiki-pooled entry, a
-# parameter-only entry, one with too few doses to fit, and one with an
-# unsupported model.
+# several dose units, both preferred models, several isolates of one pathogen,
+# a wiki-pooled entry, a parameter-only entry, one with too few doses to fit,
+# and one with an unsupported model.
 #
 # Run from the app/ directory:
 # Rscript dev/make_qmra_sample.R "../QMRA wiki data_v4.xlsx"
@@ -25,6 +25,12 @@ keys <- c(
   "63|Enterovirus|infection|exponential",
   "1|Variola major|death|NR",
   "108|Cryptosporidium hominis/ Cryptosporidium parvum|infection|exponential",
+  # Iowa, TAMU, UCP, and Moredun isolates: one pathogen, host, route, and unit,
+  # where the isolate explains which experiments pool.
+  "139|Cryptosporidium hominis/ Cryptosporidium parvum|infection|exponential",
+  "140|Cryptosporidium hominis/ Cryptosporidium parvum|infection|exponential",
+  "141|Cryptosporidium hominis/ Cryptosporidium parvum|infection|beta-Poisson",
+  "183|Cryptosporidium hominis/ Cryptosporidium parvum|infection|beta-Poisson",
   "46|Giardia|infection|exponential",
   "48|Giardia|infection|exponential",
   "252|scrapie|infection|exponential"

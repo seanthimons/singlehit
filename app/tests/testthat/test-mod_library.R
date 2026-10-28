@@ -5,11 +5,11 @@ sample_rows <- function() {
 
 test_that("the sample workbook loads and the filters narrow the experiments", {
   shiny::testServer(mod_library_server, args = list(rows = sample_rows()), {
-    expect_equal(nrow(experiments()), 14L)
-    expect_equal(nrow(filtered()), 14L)
+    expect_equal(nrow(experiments()), 18L)
+    expect_equal(nrow(filtered()), 18L)
 
     session$setInputs(filter_category = "Protozoa")
-    expect_equal(nrow(filtered()), 3L)
+    expect_equal(nrow(filtered()), 7L)
     session$setInputs(filter_category = character(), filter_dose_unit = c("CFU", "PFU"))
     expect_setequal(unique(filtered()$dose_unit), c("CFU", "PFU"))
     session$setInputs(filter_dose_unit = character(), hide_wiki_pooled = TRUE)
@@ -45,7 +45,7 @@ test_that("the Library is empty until a workbook is loaded", {
     expect_null(session$returned$sent())
     rows(read_qmra_workbook(qmra_sample_path()))
     session$flushReact()
-    expect_equal(nrow(experiments()), 14L)
+    expect_equal(nrow(experiments()), 18L)
   })
 })
 
@@ -57,7 +57,7 @@ test_that("the pooling set offers only eligible experiments and is handed on", {
     session$setInputs(pool_set = keys, pool = 1)
     expect_equal(session$returned$pool_set()$keys, keys)
     expect_equal(session$returned$pool_set()$sent, 1L)
-    expect_equal(nrow(session$returned$experiments()), 14L)
+    expect_equal(nrow(session$returned$experiments()), 18L)
   })
 })
 

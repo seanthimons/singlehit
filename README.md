@@ -317,6 +317,16 @@ trials because their searches grow rapidly. These are exploratory tests without
 multiple-testing adjustment; passing a test does not prove equivalence.
 Compare only experiments with matching hosts, units, and endpoints.
 
+Decide which experiments belong together (same isolate, outcome, host, and
+route) before testing, and use `poolability_combinations()` and
+`group_datasets()` to check that choice rather than to make it: with few doses
+per study the test rarely rejects, different searches return different
+groupings, and a group chosen from the results biases its pooled fit toward
+pooling. Also check that experiments do not share subjects, since the test
+assumes independent samples. The
+[pooling article](https://seanthimons.github.io/singlehit/articles/pooling.html)
+walks through these points with real Cryptosporidium challenge data.
+
 Datasets are combined by **stacking** — each trial's dose groups are kept as
 separate binomial observations, so repeated doses across trials are preserved
 (matching the QMRA-wiki pooled-experiment convention), rather than summed.

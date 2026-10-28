@@ -27,7 +27,7 @@ test_that("workbook parameters are pulled out of free text", {
 test_that("the sample workbook reads into one row per dose group", {
   rows <- read_qmra_workbook(qmra_sample_path())
   expect_true(all(c("experiment_key", "dose", "positive", "negative", "dose_unit", "outcome_group") %in% names(rows)))
-  expect_equal(length(unique(rows$experiment_key)), 14L)
+  expect_equal(length(unique(rows$experiment_key)), 18L)
   # The parameter-only experiment keeps a single row without counts.
   parameter_only <- rows[rows$experiment_id == "Ojielo2003", ]
   expect_equal(nrow(parameter_only), 1L)
@@ -46,7 +46,7 @@ test_that("a workbook without the raw data sheet is rejected", {
 test_that("experiments report whether singlehit can fit them", {
   rows <- read_qmra_workbook(qmra_sample_path())
   experiments <- library_experiments(rows)
-  expect_equal(nrow(experiments), 14L)
+  expect_equal(nrow(experiments), 18L)
   expect_false(experiments$fittable[experiments$experiment_id == "Ojielo2003"])
   expect_match(experiments$problem[experiments$experiment_id == "Ojielo2003"], "only fitted parameters")
   expect_false(experiments$fittable[experiments$pathogen == "Enterovirus"])
@@ -115,4 +115,13 @@ test_that("plots with nothing to draw or bad fields fail clearly", {
   expect_error(library_plot(curves, experiments[0, ]), "No curves")
   expect_error(library_plot(curves, experiments, facet = "pathogen"), "facet")
   expect_error(library_plot(curves, experiments, colour = "nope"), "colour")
+})
+
+test_that("strains are read, with unreported ones marked", {
+  expect_equal(library_strain(c(" Iowa isolate ", "NR", NA, "")), c("Iowa isolate", rep("Not reported", 3L)))
+  rows <- read_qmra_workbook(qmra_sample_path())
+  experiments <- library_experiments(rows)
+  crypto <- experiments[grepl("Cryptosporidium", experiments$pathogen), ]
+  expect_setequal(crypto$strain, c("Iowa strain", "Iowa isolate", "TAMU isolate", "UCP isolate", "Moredun isolate"))
+  expect_no_error(ggplot2::ggplot_build(library_plot(library_curves(rows, points = 20L), experiments, facet = "strain")))
 })

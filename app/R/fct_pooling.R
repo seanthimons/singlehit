@@ -7,14 +7,18 @@
 #' @param rows Output of [read_qmra_workbook()].
 #' @param experiments Output of [library_experiments()].
 #' @param keys `experiment_key` values, in the order chosen.
-#' @return The matching rows of `experiments` with `label` and `signature`
-#'   (the experiment's dose groups, to spot the same counts entered twice).
+#' @return The matching rows of `experiments` with `label` (pathogen and id,
+#'   for tables and the log), `short` (for plots: just the id, with the strain
+#'   when reported, when every experiment is the same pathogen), and
+#'   `signature` (the experiment's dose groups, to spot the same counts
+#'   entered twice).
 #' @noRd
 pool_selection <- function(rows, experiments, keys) {
   selection <- experiments[match(unique(keys), experiments$experiment_key), , drop = FALSE]
   selection <- selection[!is.na(selection$experiment_key), , drop = FALSE]
   if (nrow(selection) == 0L) {
     selection$label <- character()
+    selection$short <- character()
     selection$signature <- character()
     return(selection)
   }
@@ -22,6 +26,11 @@ pool_selection <- function(rows, experiments, keys) {
   ambiguous <- label %in% label[duplicated(label)]
   label[ambiguous] <- paste0(label[ambiguous], " (", selection$response_type[ambiguous], ")")
   selection$label <- make.unique(label, sep = " ")
+  short <- if (length(unique(selection$pathogen)) == 1L) paste0("#", selection$experiment_id) else label
+  strain <- selection$strain != "Not reported"
+  short[strain] <- paste0(short[strain], " (", selection$strain[strain], ")")
+  short[ambiguous] <- paste0(short[ambiguous], " (", selection$response_type[ambiguous], ")")
+  selection$short <- make.unique(short, sep = " ")
   selection$signature <- vapply(selection$experiment_key, function(key) {
     counts <- rows[rows$experiment_key == key & !is.na(rows$dose), c("dose", "positive", "negative"), drop = FALSE]
     if (nrow(counts) == 0L) {
@@ -121,6 +130,7 @@ pool_rules <- list(
   list(id = "response_type", severity = "warn", label = "One outcome description", check = function(selection) pool_differs(selection$response_type, "reported outcome")),
   list(id = "host", severity = "warn", label = "One host", check = function(selection) pool_differs(selection$host, "host")),
   list(id = "route", severity = "warn", label = "One exposure route", check = function(selection) pool_differs(selection$route, "exposure route")),
+  list(id = "strain", severity = "warn", label = "One strain or isolate", check = function(selection) pool_differs(selection$strain, "strain or isolate")),
   list(id = "pathogen", severity = "warn", label = "One pathogen", check = function(selection) pool_differs(selection$pathogen, "pathogen"))
 )
 
@@ -151,20 +161,20 @@ pool_blocked <- function(checks) {
   any(!checks$passed & checks$severity == "block")
 }
 
-#' Datasets for the pooling functions, named by experiment label
+#' Datasets for the pooling functions, named by short experiment label
 #'
-#' Each dataset's `study_id` is its label, so plots keep experiments apart, and
+#' Each dataset's `study_id` is its short label, so plots keep experiments apart, and
 #' every dataset gets the first experiment's spelling of the shared dose unit
 #' so the pooled rows carry one unit.
 #' @noRd
 pool_datasets <- function(rows, selection) {
   datasets <- lapply(seq_len(nrow(selection)), function(i) {
     data <- library_experiment_data(rows, selection$experiment_key[[i]])
-    data$study_id <- selection$label[[i]]
+    data$study_id <- selection$short[[i]]
     data$dose_unit <- selection$dose_unit[[1L]]
     data
   })
-  stats::setNames(datasets, selection$label)
+  stats::setNames(datasets, selection$short)
 }
 
 #' Run the poolability test, the pooled fit, and the separate fits
@@ -393,24 +403,295 @@ pool_wiki_reference <- function(rows, experiments, selection) {
   )
 }
 
-#' Log rows for one run: one row per model
+#' One log row per model, in the schema shared by tests and explorations
+#'
+#' Columns that do not apply to a kind of entry are `NA`, so rows of both
+#' kinds bind together.
 #' @noRd
-pool_log_entry <- function(run, selection, checks, rationale, workbook, time = Sys.time()) {
-  warned <- checks$label[!checks$passed & checks$severity == "warn"]
+pool_log_rows <- function(kind, selection, models, alpha, workbook, set_origin, rationale = NA_character_,
+                          warnings_acknowledged = NA_character_, method = NA_character_, groups = NA_character_,
+                          n_pairwise_tests = NA_integer_, partitions_considered = NA_real_, lrt_statistic = NA_real_,
+                          df = NA_real_, p_value = NA_real_, pooling_rejected = NA, converged = NA, time = Sys.time()) {
   data.frame(
+    kind = kind,
     time = format(time, "%Y-%m-%d %H:%M:%S"),
-    workbook = if (is.null(workbook)) "" else workbook,
+    workbook = if (is.null(workbook)) NA_character_ else workbook,
     experiments = paste(selection$label, collapse = "; "),
     dose_unit = selection$dose_unit[[1L]],
+    set_origin = set_origin,
+    rationale = rationale,
+    warnings_acknowledged = warnings_acknowledged,
+    model = models,
+    alpha = alpha,
+    method = method,
+    groups = groups,
+    n_pairwise_tests = n_pairwise_tests,
+    partitions_considered = partitions_considered,
+    lrt_statistic = lrt_statistic,
+    df = df,
+    p_value = p_value,
+    pooling_rejected = pooling_rejected,
+    converged = converged,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Log rows for a confirmatory test: one row per model
+#' @noRd
+pool_log_entry <- function(run, selection, checks, rationale, workbook, set_origin = "Library", time = Sys.time()) {
+  warned <- checks$label[!checks$passed & checks$severity == "warn"]
+  pool_log_rows(
+    kind = "test",
+    selection = selection,
+    models = run$test$model,
+    alpha = run$alpha,
+    workbook = workbook,
+    set_origin = set_origin,
     rationale = rationale,
     warnings_acknowledged = paste(warned, collapse = "; "),
-    model = run$test$model,
-    alpha = run$alpha,
     lrt_statistic = run$test$lrt_statistic,
     df = run$test$df,
     p_value = run$test$p_value,
     pooling_rejected = !run$test$poolable,
     converged = run$test$converged,
-    stringsAsFactors = FALSE
+    time = time
+  )
+}
+
+#' Log rows for an exploration: one row per model, with the groups found
+#' @noRd
+pool_explore_log_entry <- function(explore, selection, workbook, set_origin = "Library", time = Sys.time()) {
+  groups <- vapply(explore$models, function(model) pool_groups_text(explore, model), character(1L))
+  pool_log_rows(
+    kind = "exploration",
+    selection = selection,
+    models = explore$models,
+    alpha = explore$alpha,
+    workbook = workbook,
+    set_origin = set_origin,
+    method = explore$method,
+    groups = unname(groups),
+    n_pairwise_tests = explore$n * (explore$n - 1L) / 2L,
+    partitions_considered = if (explore$method == "exhaustive") pool_bell(explore$n) else NA_real_,
+    time = time
+  )
+}
+
+#' Number of ways to partition n items (the Bell number)
+#' @noRd
+pool_bell <- function(n) {
+  row <- 1
+  for (i in seq_len(n)) {
+    nxt <- numeric(length(row) + 1L)
+    nxt[[1L]] <- row[[length(row)]]
+    for (j in seq_along(row)) {
+      nxt[[j + 1L]] <- nxt[[j]] + row[[j]]
+    }
+    row <- nxt
+  }
+  row[[1L]]
+}
+
+#' Most experiments an exploration will search, to keep it to seconds
+#' @noRd
+pool_explore_limit <- 12L
+
+#' Exploratory search for mutually poolable groups
+#'
+#' Runs [singlehit::group_datasets()]: every pairwise poolability test, then a
+#' grouping (all partitions for up to six experiments, a greedy merge above
+#' that). This is the data-driven grouping #20 warns about, so the app labels
+#' it exploratory and logs it, and a set chosen from it is marked as such.
+#' The exact beta-Poisson model is left out because it is too slow to search.
+#'
+#' @return A list of `groups` (dataset, model, group), `pairwise` (p-value
+#'   matrices by model), `method`, `models`, `alpha`, `n`, and `warnings`; or
+#'   an error condition.
+#' @noRd
+pool_explore <- function(datasets, models, alpha = 0.05) {
+  models <- intersect(models, c("exponential", "beta_poisson"))
+  n <- length(datasets)
+  if (length(models) == 0L) {
+    return(simpleError("Exploration uses the exponential and beta-Poisson models; choose at least one of them."))
+  }
+  if (n < 2L || n > pool_explore_limit) {
+    return(simpleError(sprintf("Exploration needs between 2 and %d experiments (this set has %d).", pool_explore_limit, n)))
+  }
+  method <- if (n <= 6L) "exhaustive" else "agglomerative"
+  warnings <- character()
+  tryCatch(
+    {
+      groups <- withCallingHandlers(
+        singlehit::group_datasets(datasets, models = models, alpha = alpha, method = method),
+        warning = function(w) {
+          warnings <<- c(warnings, conditionMessage(w))
+          invokeRestart("muffleWarning")
+        }
+      )
+      list(
+        groups = as.data.frame(groups),
+        pairwise = attr(groups, "pairwise"),
+        method = method,
+        models = models,
+        alpha = alpha,
+        n = n,
+        warnings = unique(warnings)
+      )
+    },
+    error = function(e) e
+  )
+}
+
+#' The groups found for one model, as text such as "{A, B} {C}"
+#' @noRd
+pool_groups_text <- function(explore, model) {
+  groups <- explore$groups[explore$groups$model == model, , drop = FALSE]
+  members <- split(groups$dataset, groups$group)
+  paste0("{", vapply(members, paste, character(1L), collapse = ", "), "}", collapse = " ")
+}
+
+#' Groups of two or more that can become the pooling set
+#'
+#' @return A named character vector for a select input: values are
+#'   "model::group", names describe the members.
+#' @noRd
+pool_group_choices <- function(explore) {
+  choices <- character()
+  for (model in explore$models) {
+    groups <- explore$groups[explore$groups$model == model, , drop = FALSE]
+    for (group in sort(unique(groups$group))) {
+      members <- groups$dataset[groups$group == group]
+      if (length(members) >= 2L) {
+        label <- sprintf("%s, group %d: %s", model_label_ui(model), group, paste(members, collapse = ", "))
+        choices[[label]] <- paste(model, group, sep = "::")
+      }
+    }
+  }
+  choices
+}
+
+#' Experiment keys for a chosen group
+#' @noRd
+pool_group_keys <- function(explore, choice, selection) {
+  parts <- strsplit(choice, "::", fixed = TRUE)[[1L]]
+  groups <- explore$groups
+  members <- groups$dataset[groups$model == parts[[1L]] & groups$group == as.integer(parts[[2L]])]
+  selection$experiment_key[match(members, selection$short)]
+}
+
+#' Heatmap of pairwise poolability p-values, one panel per model
+#' @noRd
+pool_explore_plot <- function(explore) {
+  tiles <- do.call(rbind, lapply(explore$models, function(model) {
+    matrix <- explore$pairwise[[model]]
+    cells <- expand.grid(a = rownames(matrix), b = colnames(matrix), stringsAsFactors = FALSE)
+    cells$p <- matrix[cbind(cells$a, cells$b)]
+    cells$model <- model_label_ui(model)
+    cells[cells$a != cells$b, , drop = FALSE]
+  }))
+  labels <- rownames(explore$pairwise[[explore$models[[1L]]]])
+  tiles$a <- factor(tiles$a, levels = labels)
+  tiles$b <- factor(tiles$b, levels = rev(labels))
+  tiles$model <- factor(tiles$model, levels = model_label_ui(explore$models))
+  ggplot2::ggplot(tiles, ggplot2::aes(x = .data$a, y = .data$b, fill = .data$p)) +
+    ggplot2::geom_tile(colour = "white") +
+    ggplot2::geom_text(ggplot2::aes(label = format_p(.data$p, digits = 2)), size = 3.4) +
+    ggplot2::scale_fill_gradient(low = "#F4E1D2", high = "#0066A1", limits = c(0, 1), name = "Pairwise p") +
+    ggplot2::facet_wrap(ggplot2::vars(.data$model)) +
+    ggplot2::labs(
+      x = NULL,
+      y = NULL,
+      caption = paste(strwrap(paste(
+        "Unadjusted pairwise likelihood-ratio tests. A high p-value is not evidence two experiments share a curve;",
+        "with few doses the test rarely rejects."
+      ), width = 90), collapse = "\n")
+    ) +
+    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1), plot.caption = ggplot2::element_text(hjust = 0))
+}
+
+#' One dataset of the stacked experiments, for the Data and Fit tabs
+#'
+#' singlehit's reader needs one value per metadata column, so the pooled set
+#' gets combined values. It then adds up counts at doses shared between
+#' experiments: the fitted parameters are unchanged, but goodness of fit and
+#' the bootstrap use the merged dose groups, while the Pooling test keeps each
+#' experiment's rows separate. A data-informed set says so in its `study_id`,
+#' which the Fit, Compare, and Plots tabs show.
+#' @noRd
+pool_fit_data <- function(datasets, selection, data_informed = FALSE) {
+  counts <- do.call(rbind, lapply(datasets, function(data) data[c("dose", "positive", "negative")]))
+  rownames(counts) <- NULL
+  counts$study_id <- paste("Pooled:", paste(selection$label, collapse = " + "))
+  if (data_informed) {
+    counts$study_id <- paste(counts$study_id, "[data-informed set]")
+  }
+  counts$host <- paste(unique(selection$host), collapse = " + ")
+  counts$dose_unit <- selection$dose_unit[[1L]]
+  counts$endpoint <- paste(unique(selection$response_type), collapse = " + ")
+  counts
+}
+
+#' Whether a set of keys lies within a set that was explored
+#'
+#' A set chosen after seeing an exploration of the same experiments is
+#' data-informed however it reached the Pooling tab, so its test p-values are
+#' biased toward pooling.
+#' @noRd
+pool_data_informed <- function(keys, explored) {
+  length(keys) > 0L && any(vapply(explored, function(set) all(keys %in% set), logical(1L)))
+}
+
+#' "How to read this heatmap", a collapsed note under the exploration plot
+#'
+#' A summary of the pooling article on the package website.
+#' @noRd
+pool_heatmap_help <- function() {
+  bslib::accordion(
+    open = FALSE,
+    class = "mb-3",
+    bslib::accordion_panel(
+      "How to read this heatmap",
+      tags$ul(
+        class = "small mb-1",
+        tags$li(
+          strong("Each square is one test of two experiments: "),
+          "does one shared curve fit clearly worse than a curve for each? Pale (small p) is evidence they differ;",
+          "blue (large p) means no evidence of a difference."
+        ),
+        tags$li(
+          strong("\"Not rejected\" is not \"the same\". "),
+          "With a few doses per experiment the test rarely rejects, so very different experiments often pass,",
+          "including ones with different outcomes."
+        ),
+        tags$li(
+          strong("Beta-Poisson is usually bluer. "),
+          "Its second parameter and two degrees of freedom make the test weaker; it does not mean the experiments",
+          "agree more."
+        ),
+        tags$li(
+          strong("Pairs do not chain. "),
+          "A with B and B with C passing does not mean A, B, and C share one curve."
+        ),
+        tags$li(
+          strong("Groupings are not unique. "),
+          "The model and the search method can give different groups from the same data. Choosing a group from",
+          "them biases its test toward pooling."
+        ),
+        tags$li(
+          strong("Check where the subjects came from. "),
+          "The test assumes independent experiments; entries that report the same volunteers look alike for that",
+          "reason alone."
+        )
+      ),
+      p(
+        class = "small mb-0",
+        a(
+          "Read the full explanation with worked examples",
+          href = "https://seanthimons.github.io/singlehit/articles/pooling.html",
+          target = "_blank"
+        )
+      )
+    )
   )
 }
