@@ -19,6 +19,7 @@ app_ui <- function(request) {
         bslib::layout_sidebar(sidebar = bslib::sidebar(mod_upload_ui("upload")), mod_upload_table_ui("upload"))
       ),
       bslib::nav_panel("Library", mod_library_ui("library")),
+      bslib::nav_panel("Pooling", mod_pooling_ui("pooling")),
       bslib::nav_panel(
         "Fit",
         bslib::layout_sidebar(sidebar = bslib::sidebar(mod_fit_ui("fit")), mod_fit_results_ui("fit"))

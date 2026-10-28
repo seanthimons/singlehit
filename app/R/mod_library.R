@@ -1,8 +1,9 @@
 #' Library module UI
 #'
 #' Explore the QMRA wiki workbook loaded on the Data tab: filter its
-#' experiments, draw their preferred models faceted by metadata, and send one
-#' experiment back to the Data and Fit tabs.
+#' experiments, draw their preferred models faceted by metadata, send one
+#' experiment back to the Data and Fit tabs, or choose several to test for
+#' poolability on the Pooling tab.
 #'
 #' @param id Module id.
 #' @noRd
@@ -37,6 +38,27 @@ mod_library_ui <- function(id) {
     uiOutput(ns("status")),
     plotOutput(ns("plot"), height = "620px", fill = FALSE),
     uiOutput(ns("send_panel")),
+    div(
+      class = "mt-2 mb-3 p-3 border rounded",
+      h6("Pooling set"),
+      p(
+        class = "text-muted small",
+        "Experiments to test for poolability on the Pooling tab. Only experiments that can be fitted and that the wiki",
+        "has not already pooled are offered. The list follows the filters but keeps what you have already chosen."
+      ),
+      div(
+        class = "d-flex flex-wrap align-items-end gap-3",
+        selectizeInput(
+          ns("pool_set"),
+          NULL,
+          choices = character(),
+          multiple = TRUE,
+          width = "520px",
+          options = list(placeholder = "Choose two or more experiments")
+        ),
+        actionButton(ns("pool"), "Test poolability", icon = icon("layer-group"), class = "btn-outline-primary mb-3")
+      )
+    ),
     tableOutput(ns("table"))
   )
 }
@@ -46,8 +68,11 @@ mod_library_ui <- function(id) {
 #' @param id Module id.
 #' @param rows Reactive returning the workbook rows from [read_qmra_workbook()],
 #'   or `NULL` before a workbook is loaded on the Data tab.
-#' @return A reactive that is `NULL` until an experiment is sent, then a list
-#'   of `data`, `label`, and `sent` (a counter that changes on every send).
+#' @return A list of reactives: `sent`, `NULL` until an experiment is sent and
+#'   then a list of `data`, `label`, and `sent` (a counter that changes on every
+#'   send); `pool_set`, `NULL` until "Test poolability" is pressed and then a
+#'   list of `keys` and a `sent` counter; and `experiments`, the
+#'   [library_experiments()] table, so other tabs need not rebuild it.
 #' @noRd
 mod_library_server <- function(id, rows) {
   moduleServer(id, function(input, output, session) {
@@ -160,6 +185,24 @@ mod_library_server <- function(id, rows) {
       )
     })
 
+    observeEvent(filtered(), {
+      all <- experiments()
+      selected <- intersect(isolate(input$pool_set), all$experiment_key)
+      shown <- filtered()
+      eligible <- shown$experiment_key[shown$fittable & !shown$wiki_pooled]
+      offered <- all[all$experiment_key %in% union(eligible, selected), , drop = FALSE]
+      choices <- stats::setNames(offered$experiment_key, library_experiment_label(offered))
+      updateSelectizeInput(session, "pool_set", choices = choices, selected = selected)
+    })
+
+    pool_sent <- reactiveVal(NULL)
+    pool_count <- reactiveVal(0L)
+    observeEvent(input$pool, {
+      req(length(input$pool_set) > 0L)
+      pool_count(pool_count() + 1L)
+      pool_sent(list(keys = input$pool_set, sent = pool_count()))
+    })
+
     sent <- reactiveVal(NULL)
     count <- reactiveVal(0L)
     observeEvent(input$send, {
@@ -172,6 +215,6 @@ mod_library_server <- function(id, rows) {
         sent = count()
       ))
     })
-    sent
+    list(sent = sent, pool_set = pool_sent, experiments = experiments)
   })
 }

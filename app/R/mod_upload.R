@@ -71,7 +71,8 @@ mod_upload_table_ui <- function(id) {
 #'   of dose groups), `label` (where it came from), and `sent` (a counter, so
 #'   sending the same experiment again reloads it).
 #' @return A list of reactives: `data`, the standardized data or `NULL`;
-#'   `workbook`, the workbook rows or `NULL`; and `workbook_loaded`, a counter
+#'   `workbook`, the workbook rows or `NULL`; `workbook_name`, where it came
+#'   from; and `workbook_loaded`, a counter
 #'   that changes each time a workbook loads successfully.
 #' @noRd
 mod_upload_server <- function(id, incoming = reactive(NULL)) {
@@ -213,6 +214,7 @@ mod_upload_server <- function(id, incoming = reactive(NULL)) {
     list(
       data = reactive(if (inherits(parsed(), "error")) NULL else parsed()),
       workbook = reactive(workbook()),
+      workbook_name = reactive(workbook_name()),
       workbook_loaded = reactive(workbook_loaded())
     )
   })

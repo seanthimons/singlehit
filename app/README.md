@@ -39,9 +39,9 @@ depends on the app.
   "Use {plotly} to render plot" under Options for hover and zoom.
   The interface font is overridden in `inst/app/www/custom.css`.
 
-- **Library:** explores the QMRA wiki workbook (`.xlsx`, "raw data" sheet)
-  loaded on the Data tab, or the bundled 14-experiment sample, and will be
-  the starting point for pooling. Filter experiments by pathogen group,
+- **Library:** explores the QMRA wiki workbook (`.xlsx`, "raw data" sheet),
+  or the bundled 14-experiment sample, loaded on the Data tab, and is the
+  starting point for pooling. Filter experiments by pathogen group,
   pathogen, outcome group, dose unit, host, exposure route, and preferred model,
   and draw every experiment's preferred model on one log-dose plot, faceted and
   coloured by any of those fields. Curves are refit from the counts; experiments
@@ -54,9 +54,36 @@ depends on the app.
   rules in `R/fct_library.R`. The full workbook is not in the repository; the
   sample is rebuilt from it with `dev/make_qmra_sample.R`. The data come from
   the [QMRA wiki](https://qmrawiki.org) and the studies it cites; each sample
-  row keeps its reference, DOI, and wiki link.
+  row keeps its reference, DOI, and wiki link. Choose several experiments in
+  the "Pooling set" and press "Test poolability" to open them on the Pooling
+  tab.
 
-Pooling (#35) and export are planned.
+- **Pooling:** tests whether the chosen experiments can share one curve, with
+  singlehit's likelihood-ratio `poolability_test()` and a pooled fit from
+  `fit_pooled_dose_response()`. Before running you must write why the
+  experiments belong together, and every run is kept in a session log (with
+  the rationale, the warnings you ran past, and the p-values) that downloads
+  as CSV and counts how many unadjusted tests have been run. The log lasts the whole
+  session, across workbooks, and the rationale clears whenever the pooling set
+  or workbook changes, so each set gets its own justification. Results show the test with the caveat that "not rejected"
+  is not evidence of equivalence, each experiment's own fit against the pooled
+  fit, the spread of the parameter estimates, and the wiki's own pooled entry
+  when the chosen experiments match one (21 + 23 for Burkholderia mallei
+  reproduces the wiki's "21,23"). The data-driven `group_datasets()` and
+  `poolability_combinations()` are deliberately not offered: picking groups
+  from the fits is the forking path described in #20.
+
+  **The checks are a tunable pinch point.** They live in one table,
+  `pool_rules` in `R/fct_pooling.R`, and are a first, loose cut to be revised.
+  Only data problems block a test: fewer than two experiments, an experiment
+  that cannot be fitted, double counting (an entry the wiki already pooled,
+  the same experiment twice, identical counts), and dose units that differ or
+  are not reported (singlehit itself also refuses mixed units). Different
+  outcomes, hosts, routes, or pathogens only warn, because the wiki itself
+  pools across hosts and routes.
+
+Hierarchical (family-level) models, bootstrap intervals for pooled fits, and
+export are planned.
 
 ## License
 

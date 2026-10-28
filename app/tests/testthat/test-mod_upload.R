@@ -119,5 +119,9 @@ test_that("a bad workbook reports an error and keeps the previous workbook", {
     expect_match(workbook_error(), "raw data")
     expect_equal(length(unique(session$returned$workbook()$experiment_key)), 14L)
     expect_equal(session$returned$workbook_loaded(), 1L)
+
+    # The error is stale once a dataset loads.
+    session$setInputs(example = 1)
+    expect_null(workbook_error())
   })
 })
