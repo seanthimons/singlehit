@@ -5,7 +5,10 @@
 #' @import shiny
 #' @noRd
 app_server <- function(input, output, session) {
-  data <- mod_upload_server("upload")
+  library_sent <- mod_library_server("library")
+  data <- mod_upload_server("upload", incoming = library_sent)
+  # A sent experiment replaces the loaded data; show it there first.
+  observeEvent(library_sent(), bslib::nav_select("main", "Data", session = session))
   analysis <- mod_fit_server("fit", data)
   mod_compare_server("compare", analysis)
   # Plots and Explore get the analysis with the bootstraps attached once a run

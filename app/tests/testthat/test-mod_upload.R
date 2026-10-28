@@ -56,3 +56,21 @@ test_that("the example button loads the Ward rotavirus data", {
     expect_equal(sum(data$total), 59)
   })
 })
+
+test_that("data sent from the Library tab load without a file", {
+  sent <- shiny::reactiveVal(NULL)
+  data <- data.frame(dose = c(1, 10, 100), positive = c(1, 5, 9), negative = c(9, 5, 1), study_id = "x", dose_unit = "CFU")
+  shiny::testServer(mod_upload_server, args = list(incoming = sent), {
+    sent(list(data = data, label = "Test experiment", sent = 1L))
+    session$flushReact()
+    result <- session$returned()
+    expect_equal(result$dose, c(1, 10, 100))
+    expect_equal(unique(result$dose_unit), "CFU")
+    expect_true(is.list(loaded()))
+
+    # Loading the example afterwards replaces the library data.
+    session$setInputs(example = 1)
+    expect_false(is.list(loaded()))
+    expect_equal(nrow(session$returned()), 8L)
+  })
+})

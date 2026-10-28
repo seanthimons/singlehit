@@ -2,6 +2,7 @@
 
 export(run_app)
 import(shiny)
+importFrom(ggplot2,.data)
 importFrom(golem,
   activate_js,
   add_resource_path,

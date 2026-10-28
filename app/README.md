@@ -36,7 +36,23 @@ depends on the app.
   "Use {plotly} to render plot" under Options for hover and zoom.
   The interface font is overridden in `inst/app/www/custom.css`.
 
-Pooling and export are planned.
+- **Library:** upload the QMRA wiki workbook (`.xlsx`, "raw data" sheet) or
+  use the bundled 14-experiment sample, filter experiments by pathogen group,
+  pathogen, outcome group, dose unit, host, exposure route, and preferred model,
+  and draw every experiment's preferred model on one log-dose plot, faceted and
+  coloured by any of those fields. Curves are refit from the counts; experiments
+  the workbook reports only as parameters are drawn from those (dashed). Dose
+  units differ between studies, so the plot says so unless it is faceted by
+  dose unit or filtered to one. "Send to Data and Fit" loads one experiment,
+  with its study id, host, unit, and endpoint, as the current data; experiments
+  singlehit cannot fit (fewer than three doses, parameters only) say why
+  instead. Free-text host, route, and outcome spellings are grouped by simple
+  rules in `R/fct_library.R`. The full workbook is not in the repository; the
+  sample is rebuilt from it with `dev/make_qmra_sample.R`. The data come from
+  the [QMRA wiki](https://qmrawiki.org) and the studies it cites; each sample
+  row keeps its reference, DOI, and wiki link.
+
+Pooling (#35) and export are planned.
 
 ## License
 

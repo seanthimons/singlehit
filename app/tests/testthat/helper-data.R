@@ -22,3 +22,7 @@ example_analysis_with_bands <- function(models = c("exponential", "beta_poisson"
   boots <- singlehit::bootstrap_dose_response_models(analysis$fits, times = 20, seed = 1, backend = "sequential")
   singlehit::add_bootstrap(analysis, boots)
 }
+
+qmra_sample_path <- function() {
+  system.file("extdata", "qmra-wiki-sample.xlsx", package = "singlehitapp")
+}

@@ -37,6 +37,7 @@ mod_upload_table_ui <- function(id) {
   ns <- NS(id)
   tagList(
     uiOutput(ns("error")),
+    uiOutput(ns("origin")),
     uiOutput(ns("summary")),
     tableOutput(ns("table"))
   )
@@ -44,29 +45,34 @@ mod_upload_table_ui <- function(id) {
 
 #' Upload module server
 #'
-#' Reads the chosen file with [singlehit::read_dose_response()], which
-#' standardizes and validates the grouped counts.
+#' Reads the chosen file with [singlehit::read_dose_response()], or a data
+#' frame sent from the Library tab with [singlehit::as_dose_response()]; both
+#' standardize and validate the grouped counts.
 #'
 #' @param id Module id.
+#' @param incoming Reactive returning `NULL` or a list with `data` (a data frame
+#'   of dose groups), `label` (where it came from), and `sent` (a counter, so
+#'   sending the same experiment again reloads it).
 #' @return A reactive returning the standardized data, or `NULL` when nothing
 #'   valid has been loaded.
 #' @noRd
-mod_upload_server <- function(id) {
+mod_upload_server <- function(id, incoming = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
     fields <- c("dose", "positive", "negative")
     no_mapping <- list(dose = NULL, positive = NULL, negative = NULL)
-    source_path <- reactiveVal(NULL)
+    # A path to read, or a list(data, label) sent from the Library tab.
+    loaded <- reactiveVal(NULL)
     mapping <- reactiveVal(no_mapping)
 
     # A new source starts from auto-detection. The mapping is reset here, in the
-    # same step as the path, so the new file is never parsed with the previous
-    # file's column choices.
-    load_source <- function(path) {
+    # same step as the source, so the new data are never parsed with the
+    # previous source's column choices.
+    load_source <- function(value) {
       mapping(no_mapping)
       for (field in fields) {
         updateSelectInput(session, field, selected = "")
       }
-      source_path(path)
+      loaded(value)
     }
 
     observeEvent(input$file, load_source(input$file$datapath))
@@ -74,13 +80,20 @@ mod_upload_server <- function(id) {
       input$example,
       load_source(system.file("extdata", "Ward_rotavirus.txt", package = "singlehit"))
     )
+    observeEvent(incoming(), {
+      sent <- incoming()
+      load_source(list(data = sent$data, label = sent$label))
+    })
 
     # Same reader settings as singlehit::read_dose_response(), so the offered
     # names match what the real read sees.
     columns <- reactive({
-      req(source_path())
+      req(loaded())
+      if (is.list(loaded())) {
+        return(names(loaded()$data))
+      }
       tryCatch(
-        names(readr::read_delim(source_path(), n_max = 0L, show_col_types = FALSE, progress = FALSE, trim_ws = TRUE)),
+        names(readr::read_delim(loaded(), n_max = 0L, show_col_types = FALSE, progress = FALSE, trim_ws = TRUE)),
         error = function(e) character()
       )
     })
@@ -100,17 +113,20 @@ mod_upload_server <- function(id) {
     })
 
     parsed <- reactive({
-      req(source_path())
+      req(loaded())
       chosen <- mapping()
-      tryCatch(
-        singlehit::read_dose_response(
-          source_path(),
-          dose = chosen$dose,
-          positive = chosen$positive,
-          negative = chosen$negative
-        ),
-        error = function(e) e
-      )
+      read <- if (is.list(loaded())) {
+        function() singlehit::as_dose_response(loaded()$data, chosen$dose, chosen$positive, chosen$negative)
+      } else {
+        function() singlehit::read_dose_response(loaded(), dose = chosen$dose, positive = chosen$positive, negative = chosen$negative)
+      }
+      tryCatch(read(), error = function(e) e)
+    })
+
+    output$origin <- renderUI({
+      if (is.list(loaded())) {
+        p(class = "text-muted", "From the Library tab: ", strong(loaded()$label))
+      }
     })
 
     output$error <- renderUI({

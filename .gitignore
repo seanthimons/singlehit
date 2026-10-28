@@ -40,6 +40,7 @@ docs/
 # Local-only development artifacts and source data (kept out of the public repo)
 /dev/
 /data/raw/QMRA wiki data_v4.xlsx
+/QMRA wiki data_v4.xlsx
 
 # Translation temp files
 po/*~
