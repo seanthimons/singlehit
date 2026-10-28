@@ -1,7 +1,8 @@
 #' Library module UI
 #'
-#' Load the QMRA wiki workbook, filter its experiments, draw their preferred
-#' models faceted by metadata, and send one experiment to the Data and Fit tabs.
+#' Explore the QMRA wiki workbook loaded on the Data tab: filter its
+#' experiments, draw their preferred models faceted by metadata, and send one
+#' experiment back to the Data and Fit tabs.
 #'
 #' @param id Module id.
 #' @noRd
@@ -10,18 +11,13 @@ mod_library_ui <- function(id) {
   filter <- function(field, label) {
     selectizeInput(ns(paste0("filter_", field)), label, choices = character(), multiple = TRUE, options = list(placeholder = "All"))
   }
+  # Not fillable: the plot sits above a long table, and in a fillable layout
+  # the page squeezes the plot to fit the window until base graphics fails
+  # with "figure margins too large". Here the main panel scrolls instead.
   bslib::layout_sidebar(
+    fillable = FALSE,
     sidebar = bslib::sidebar(
       width = 320,
-      fileInput(ns("file"), "QMRA wiki workbook", accept = ".xlsx"),
-      actionButton(ns("sample"), "Use sample workbook"),
-      p(
-        class = "text-muted small mt-1",
-        "14 experiments cut down from the QMRA wiki workbook, for demos and testing. Data compiled from the ",
-        a("QMRA wiki", href = "https://qmrawiki.org", target = "_blank"),
-        "; see each row's reference."
-      ),
-      hr(),
       h6("Filter experiments"),
       filter("category", "Pathogen group"),
       filter("pathogen", "Pathogen"),
@@ -37,10 +33,9 @@ mod_library_ui <- function(id) {
       selectInput(ns("colour"), "Colour by", choices = library_fields, selected = "category"),
       checkboxInput(ns("free_x"), "Separate dose axis per facet", value = FALSE)
     ),
-    uiOutput(ns("error")),
     uiOutput(ns("empty")),
     uiOutput(ns("status")),
-    plotOutput(ns("plot"), height = "620px"),
+    plotOutput(ns("plot"), height = "620px", fill = FALSE),
     uiOutput(ns("send_panel")),
     tableOutput(ns("table"))
   )
@@ -49,23 +44,16 @@ mod_library_ui <- function(id) {
 #' Library module server
 #'
 #' @param id Module id.
+#' @param rows Reactive returning the workbook rows from [read_qmra_workbook()],
+#'   or `NULL` before a workbook is loaded on the Data tab.
 #' @return A reactive that is `NULL` until an experiment is sent, then a list
 #'   of `data`, `label`, and `sent` (a counter that changes on every send).
 #' @noRd
-mod_library_server <- function(id) {
+mod_library_server <- function(id, rows) {
   moduleServer(id, function(input, output, session) {
     filters <- c("category", "pathogen", "outcome_group", "dose_unit", "host_group", "route_group", "model_label")
-    workbook <- reactiveVal(NULL)
-
-    observeEvent(input$file, workbook(input$file$datapath))
-    observeEvent(input$sample, workbook(app_sys("extdata", "qmra-wiki-sample.xlsx")))
-
-    rows <- reactive({
-      req(workbook())
-      tryCatch(read_qmra_workbook(workbook()), error = function(e) e)
-    })
     loaded <- reactive({
-      req(!inherits(rows(), "error"))
+      req(rows())
       rows()
     })
     # Checking and refitting every experiment is the slow step (seconds for the
@@ -93,14 +81,9 @@ mod_library_server <- function(id) {
       out
     })
 
-    output$error <- renderUI({
-      if (inherits(rows(), "error")) {
-        div(class = "alert alert-danger", conditionMessage(rows()))
-      }
-    })
     output$empty <- renderUI({
-      if (is.null(workbook())) {
-        p(class = "text-muted", "Upload the QMRA wiki workbook (.xlsx) or use the sample workbook to browse its experiments.")
+      if (is.null(rows())) {
+        p(class = "text-muted", "Load the QMRA wiki workbook (.xlsx), or the sample workbook, on the Data tab to browse its experiments.")
       }
     })
     output$status <- renderUI({

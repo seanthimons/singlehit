@@ -8,8 +8,11 @@ depends on the app.
 
 ## What it does today
 
-- **Data:** upload a delimited file or use the bundled Ward rotavirus example, with optional
-  column mapping when names are not recognized automatically.
+- **Data:** the one place to load data. A delimited file, or the bundled Ward
+  rotavirus example, becomes the dataset Fit analyses, with optional column
+  mapping when names are not recognized automatically. An `.xlsx` QMRA wiki
+  workbook, or the bundled sample workbook, is loaded for the Library tab
+  instead and leaves the current dataset alone.
 - **Fit:** choose at least two models (exponential, beta-Poisson, exact
   beta-Poisson), see the dose-trend test, parameter estimates, and goodness of
   fit. The analysis runs without bootstrapping.
@@ -36,15 +39,16 @@ depends on the app.
   "Use {plotly} to render plot" under Options for hover and zoom.
   The interface font is overridden in `inst/app/www/custom.css`.
 
-- **Library:** upload the QMRA wiki workbook (`.xlsx`, "raw data" sheet) or
-  use the bundled 14-experiment sample, filter experiments by pathogen group,
+- **Library:** explores the QMRA wiki workbook (`.xlsx`, "raw data" sheet)
+  loaded on the Data tab, or the bundled 14-experiment sample, and will be
+  the starting point for pooling. Filter experiments by pathogen group,
   pathogen, outcome group, dose unit, host, exposure route, and preferred model,
   and draw every experiment's preferred model on one log-dose plot, faceted and
   coloured by any of those fields. Curves are refit from the counts; experiments
   the workbook reports only as parameters are drawn from those (dashed). Dose
   units differ between studies, so the plot says so unless it is faceted by
-  dose unit or filtered to one. "Send to Data and Fit" loads one experiment,
-  with its study id, host, unit, and endpoint, as the current data; experiments
+  dose unit or filtered to one. "Send to Data and Fit" makes one experiment the current dataset,
+  with its study id, host, unit, and endpoint; experiments
   singlehit cannot fit (fewer than three doses, parameters only) say why
   instead. Free-text host, route, and outcome spellings are grouped by simple
   rules in `R/fct_library.R`. The full workbook is not in the repository; the

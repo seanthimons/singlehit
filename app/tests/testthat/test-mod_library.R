@@ -1,6 +1,10 @@
+sample_rows <- function() {
+  rows <- read_qmra_workbook(qmra_sample_path())
+  shiny::reactive(rows)
+}
+
 test_that("the sample workbook loads and the filters narrow the experiments", {
-  shiny::testServer(mod_library_server, {
-    session$setInputs(sample = 1)
+  shiny::testServer(mod_library_server, args = list(rows = sample_rows()), {
     expect_equal(nrow(experiments()), 14L)
     expect_equal(nrow(filtered()), 14L)
 
@@ -14,8 +18,7 @@ test_that("the sample workbook loads and the filters narrow the experiments", {
 })
 
 test_that("sending an experiment returns its data with a changing counter", {
-  shiny::testServer(mod_library_server, {
-    session$setInputs(sample = 1)
+  shiny::testServer(mod_library_server, args = list(rows = sample_rows()), {
     key <- experiments()$experiment_key[experiments()$pathogen == "Rotavirus"]
     session$setInputs(experiment = key, send = 1)
     first <- session$returned()
@@ -29,20 +32,19 @@ test_that("sending an experiment returns its data with a changing counter", {
 })
 
 test_that("an experiment that cannot be fitted is not sent", {
-  shiny::testServer(mod_library_server, {
-    session$setInputs(sample = 1)
+  shiny::testServer(mod_library_server, args = list(rows = sample_rows()), {
     key <- experiments()$experiment_key[experiments()$experiment_id == "Ojielo2003"]
     session$setInputs(experiment = key, send = 1)
     expect_null(session$returned())
   })
 })
 
-test_that("a file that is not a QMRA workbook shows an error", {
-  skip_if_not_installed("writexl")
-  path <- withr::local_tempfile(fileext = ".xlsx")
-  writexl::write_xlsx(list(other = data.frame(x = 1)), path)
-  shiny::testServer(mod_library_server, {
-    session$setInputs(file = list(datapath = path))
-    expect_s3_class(rows(), "error")
+test_that("the Library is empty until a workbook is loaded", {
+  rows <- shiny::reactiveVal(NULL)
+  shiny::testServer(mod_library_server, args = list(rows = rows), {
+    expect_null(session$returned())
+    rows(read_qmra_workbook(qmra_sample_path()))
+    session$flushReact()
+    expect_equal(nrow(experiments()), 14L)
   })
 })

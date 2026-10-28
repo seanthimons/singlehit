@@ -28,6 +28,7 @@ Imports:
     plotly,
     readr,
     readxl,
+    scales,
     shiny,
     singlehit (>= 0.3.0),
     stats,

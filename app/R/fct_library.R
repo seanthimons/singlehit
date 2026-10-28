@@ -364,7 +364,8 @@ library_plot <- function(curves, experiments, facet = "none", colour = "category
     colour_scale +
     ggplot2::scale_linetype_manual(values = c("Refit from counts" = "solid", "Workbook parameters" = "dashed")) +
     ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(alpha = 1))) +
-    ggplot2::scale_x_log10() +
+    # Powers of ten ("10^5") stay short enough not to collide in narrow facets.
+    ggplot2::scale_x_log10(breaks = scales::breaks_log(n = 4), labels = scales::label_log()) +
     ggplot2::scale_y_continuous(limits = c(0, 1)) +
     ggplot2::labs(
       subtitle = sprintf("%d experiments", length(unique(data$experiment_key))),
@@ -372,12 +373,16 @@ library_plot <- function(curves, experiments, facet = "none", colour = "category
       y = "Probability of reported outcome",
       colour = names(library_fields)[library_fields == colour][[1L]],
       linetype = "Curve source",
-      caption = paste(strwrap(caption, width = 120), collapse = "\n")
+      caption = paste(strwrap(caption, width = 90), collapse = "\n")
     ) +
     ggplot2::theme_minimal(base_size = 12) +
     ggplot2::theme(legend.position = "right", plot.caption = ggplot2::element_text(hjust = 0))
   if (facet != "none") {
-    plot <- plot + ggplot2::facet_wrap(ggplot2::vars(.data[[facet]]), scales = if (free_x) "free_x" else "fixed")
+    plot <- plot + ggplot2::facet_wrap(
+      ggplot2::vars(.data[[facet]]),
+      scales = if (free_x) "free_x" else "fixed",
+      labeller = ggplot2::label_wrap_gen(width = 20)
+    )
   }
   plot
 }
