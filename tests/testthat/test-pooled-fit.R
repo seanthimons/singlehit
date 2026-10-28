@@ -84,3 +84,14 @@ test_that("fit_pooled_dose_response validates its inputs", {
   bad <- data.frame(dose = c(1, 10, 100), pos = c(0, 0, 1), neg = c(5, 5, 4))
   expect_error(fit_pooled_dose_response(list(good = ward_fixture(), bad = bad)), "bad")
 })
+
+test_that("fit_pooled_dose_response refuses mixed dose units", {
+  a <- ward_fixture()
+  b <- ward_fixture()
+  a$dose_unit <- "FFU"
+  b$dose_unit <- "PFU"
+  expect_error(fit_pooled_dose_response(list(a = a, b = b), models = "exponential"), "different dose units")
+  b$dose_unit <- "FFU"
+  pooled <- fit_pooled_dose_response(list(a = a, b = b), models = "exponential")
+  expect_equal(unique(pooled$exponential$data$dose_unit), "FFU")
+})

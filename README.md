@@ -211,9 +211,11 @@ poolability_test(collection$datasets)
 ```
 
 This list is an organizational convention, not a validated collection object.
-Check that hosts, dose units, and endpoints match before testing poolability;
-the current pooling functions do not enforce those checks. Recording matching
-metadata does not by itself establish that experiments should be pooled.
+The pooling functions refuse datasets whose `dose_unit` metadata differ, since
+doses in different units are not comparable. They do not check hosts or
+endpoints, so confirm those match before testing poolability. Recording
+matching metadata does not by itself establish that experiments should be
+pooled.
 
 ## Example
 
@@ -288,6 +290,8 @@ dataset separately and the stacked combination, then compares the deviance
 difference to a chi-squared distribution (per model). Datasets that pool
 significantly worse than when fit separately are kept distinct.
 `group_datasets()` extends this to find which trials are mutually poolable.
+Datasets that record `dose_unit` must all record the same unit; mixed units are
+an error.
 
 ```r
 trials <- list(trial_a = data_a, trial_b = data_b, trial_c = data_c)

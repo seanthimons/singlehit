@@ -269,8 +269,9 @@ names(collection$datasets)
 The output names A, B, and C. Keep the pathogen name once on the collection.
 Split by `study_id` before coercion because it identifies an individual
 experiment. `read_dose_response()` handles one experiment at a time and rejects
-mixed identity values. Check that hosts, units, and endpoints match before
-pooling; the current pooling functions do not enforce that comparison.
+mixed identity values. The pooling functions refuse datasets that record
+different dose units; they do not compare hosts or endpoints, so check those
+match before pooling.
 
 ### Inspect every combination
 
