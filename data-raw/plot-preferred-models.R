@@ -1,9 +1,17 @@
 # Run from the package root:
-# Rscript data-raw/plot-preferred-models.R workbook.xlsx overview.png [--facet-outcome | --facet-group-outcome | --facet-taxa-outcome | --facet-taxa-genus]
+# Rscript data-raw/plot-preferred-models.R workbook.xlsx overview.png [facet-mode] [--outcomes=3]
+# facet-mode (optional, one of):
+#   --facet-outcome        outcome rows only
+#   --facet-group-outcome  outcome rows x pathogen group columns
+#   --facet-taxa-outcome   outcome rows x bacterial taxa split + other groups
+#   --facet-taxa-genus     as above, coloured by genus
+# --outcomes=3 uses the original three outcome rows (infection or detection merged); default is four (--outcomes=4).
 args <- commandArgs(trailingOnly = TRUE)
 modes <- c("--facet-outcome", "--facet-group-outcome", "--facet-taxa-outcome", "--facet-taxa-genus")
+three_outcomes <- "--outcomes=3" %in% args
+args <- setdiff(args, c("--outcomes=3", "--outcomes=4"))
 if (length(args) < 2L || length(args) > 3L || (length(args) == 3L && !args[[3L]] %in% modes)) {
-  stop("Supply the workbook and output PNG paths, optionally followed by --facet-outcome --facet-group-outcome, --facet-taxa-outcome, or --facet-taxa-genus.")
+  stop("Usage: workbook.xlsx output.png [", paste(modes, collapse = " | "), "] [--outcomes=3]")
 }
 mode <- if (length(args) == 3L) args[[3L]] else ""
 facet_outcome <- mode == "--facet-outcome"
@@ -78,11 +86,16 @@ if (any(!is.finite(curves$estimate))) stop("A curve contains invalid probabiliti
 outcome <- tolower(curves$outcome)
 curves$outcome_group <- dplyr::case_when(
   grepl("death|mortality|stillbirth", outcome) ~ "Death or mortality",
-  grepl("culture|isolation|shedding", outcome) ~ "Detection or shedding",
-  grepl("infection|invasion|antibody", outcome) ~ "Infection",
+  grepl("culture|isolation|shedding", outcome) ~ if (three_outcomes) "Infection or detection" else "Detection or shedding",
+  grepl("infection|invasion|antibody", outcome) ~ if (three_outcomes) "Infection or detection" else "Infection",
   TRUE ~ "Illness or clinical signs"
 )
-curves$outcome_group <- factor(curves$outcome_group, levels = c("Infection", "Detection or shedding", "Illness or clinical signs", "Death or mortality"))
+outcome_levels <- if (three_outcomes) {
+  c("Infection or detection", "Illness or clinical signs", "Death or mortality")
+} else {
+  c("Infection", "Detection or shedding", "Illness or clinical signs", "Death or mortality")
+}
+curves$outcome_group <- factor(curves$outcome_group, levels = outcome_levels)
 curves$genus <- sub("\\s.*$", "", curves$pathogen)
 if (facet_taxa) {
   # ponytail: hand-mapped genus -> panel; unmapped bacteria land in "Other bacteria" (swap for NCBI via taxizedb if the list grows).
@@ -128,7 +141,7 @@ plot <- ggplot2::ggplot(curves, ggplot2::aes(x = .data$dose, y = .data$estimate,
 if (facet_outcome) plot <- plot + ggplot2::facet_wrap(ggplot2::vars(.data$outcome_group), ncol = 1)
 if (facet_grid) plot <- plot + ggplot2::facet_grid(rows = ggplot2::vars(.data$outcome_group), cols = ggplot2::vars(.data$group), labeller = ggplot2::labeller(group = ggplot2::label_wrap_gen(14)))
 
-ggplot2::ggsave(args[[2L]], plot, width = if (facet_taxa) 15 else if (facet_grid) 12 else 10, height = if (facet_grid) 14 else if (facet_outcome) 11 else 6, dpi = 160)
+ggplot2::ggsave(args[[2L]], plot, width = if (facet_taxa) 15 else if (facet_grid) 12 else 10, height = if (facet_grid) 3.5 * length(outcome_levels) else if (facet_outcome) 2.75 * length(outcome_levels) else 6, dpi = 160)
 cat(sprintf("Plotted %d of %d experiments.\n", length(unique(curves$study_key)), length(experiments)))
 print(table(curves$source[!duplicated(curves$study_key)]))
 print(table(curves$outcome_group[!duplicated(curves$study_key)]))
