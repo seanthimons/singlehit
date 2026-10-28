@@ -632,6 +632,39 @@ pool_fit_data <- function(datasets, selection, data_informed = FALSE) {
   counts
 }
 
+#' Each experiment's dose groups with its metadata, sent alongside pooled data
+#'
+#' The pooled dataset that Fit analyses has one row per dose, so it cannot say
+#' which experiment a count came from. This table keeps that, for colouring
+#' and exploring the observed points on the Plots and Explore tabs.
+#' @return One row per experiment and dose: `experiment` (short label),
+#'   `experiment_id`, `pathogen`, `strain`, `host`, `route`, `outcome`,
+#'   `dose_unit`, `dose`, `positive`, `negative`, `total`, and `response`.
+#' @noRd
+pool_components <- function(datasets, selection) {
+  out <- do.call(rbind, lapply(seq_len(nrow(selection)), function(i) {
+    data <- singlehit::as_dose_response(datasets[[i]][c("dose", "positive", "negative")])
+    data.frame(
+      experiment = selection$short[[i]],
+      experiment_id = selection$experiment_id[[i]],
+      pathogen = selection$pathogen[[i]],
+      strain = selection$strain[[i]],
+      host = selection$host[[i]],
+      route = selection$route[[i]],
+      outcome = selection$response_type[[i]],
+      dose_unit = selection$dose_unit[[1L]],
+      dose = data$dose,
+      positive = data$positive,
+      negative = data$negative,
+      total = data$total,
+      response = data$response,
+      stringsAsFactors = FALSE
+    )
+  }))
+  rownames(out) <- NULL
+  out
+}
+
 #' Whether a set of keys lies within a set that was explored
 #'
 #' A set chosen after seeing an exploration of the same experiments is

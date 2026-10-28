@@ -32,6 +32,8 @@ app_server <- function(input, output, session) {
   # Plots and Explore get the analysis with the bootstraps attached once a run
   # finishes; Compare does not use them.
   analysis_with_bands <- mod_bootstrap_server("bootstrap", analysis)
-  mod_figures_server("figures", analysis_with_bands)
-  mod_explore_server("explore", analysis_with_bands)
+  # Pooled data also carry each experiment's dose groups, for colouring and
+  # exploring the observed points by sub-study.
+  mod_figures_server("figures", analysis_with_bands, upload$components)
+  mod_explore_server("explore", analysis_with_bands, upload$components)
 }

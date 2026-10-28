@@ -8,6 +8,7 @@ mod_figures_ui <- function(id) {
     sidebar = bslib::sidebar(
       radioButtons(ns("type"), "View", choices = figure_types),
       uiOutput(ns("band_hint")),
+      uiOutput(ns("colour_by_ui")),
       conditionalPanel(
         "input.type == 'single'",
         ns = ns,
@@ -29,9 +30,25 @@ mod_figures_ui <- function(id) {
 #'
 #' @param id Module id.
 #' @param analysis Reactive returning a `qdr_analysis`, or `NULL`.
+#' @param components Reactive returning the per-experiment dose groups of
+#'   pooled data (see [pool_components()]), or `NULL`.
 #' @noRd
-mod_figures_server <- function(id, analysis) {
+mod_figures_server <- function(id, analysis, components = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
+    # Only components that add up to the analysed data are used, so a stale
+    # table can never colour another dataset's points.
+    matched <- reactive(!is.null(analysis()) && components_match(components(), analysis()$data))
+    output$colour_by_ui <- renderUI({
+      req(matched())
+      keep <- isolate(input$colour_by)
+      selectInput(
+        session$ns("colour_by"),
+        "Colour observed points by",
+        choices = c("None (pooled dose groups)" = "", substudy_fields),
+        selected = if (is.null(keep)) "" else keep
+      )
+    })
+
     # Refresh the model list whenever the analysis changes so a model from an
     # earlier run cannot stay selected.
     observeEvent(
@@ -55,7 +72,13 @@ mod_figures_server <- function(id, analysis) {
       if (input$type == "single") {
         req(input$model %in% names(analysis()$fits))
       }
-      build_figure(analysis(), input$type, input$model)
+      build_figure(
+        analysis(),
+        input$type,
+        input$model,
+        components = if (matched()) components(),
+        colour_by = if (matched() && isTRUE(nzchar(input$colour_by))) input$colour_by
+      )
     })
 
     output$empty <- renderUI({

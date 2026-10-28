@@ -17,11 +17,16 @@ explore_dataset_choices <- c(
 #'   `lower`/`upper` bounds and `level` as a factor (widest interval first); otherwise they are `NA`.
 #' - `model_residuals`: observed groups with fitted values and deviance
 #'   residuals per model.
+#' - `substudies` (pooled data only): each experiment's dose groups with its
+#'   metadata and the pooled model's fitted probability at that dose, one row
+#'   per experiment, dose, and model.
 #'
 #' @param analysis A `qdr_analysis`.
+#' @param components Per-experiment dose groups of pooled data that match the
+#'   analysis (see [pool_components()]), or `NULL`.
 #' @return A named list of data frames.
 #' @noRd
-explore_datasets <- function(analysis) {
+explore_datasets <- function(analysis, components = NULL) {
   fits <- analysis$fits
   models <- names(fits)
 
@@ -51,11 +56,28 @@ explore_datasets <- function(analysis) {
     )
   }))
 
-  list(
+  out <- list(
     observed = as.data.frame(analysis$data),
     curves = curves,
     model_residuals = model_residuals
   )
+  if (!is.null(components)) {
+    out$substudies <- do.call(rbind, lapply(models, function(name) {
+      cbind(
+        components,
+        model = model_label_ui(name),
+        fitted = stats::predict(fits[[name]], newdata = components$dose),
+        stringsAsFactors = FALSE
+      )
+    }))
+  }
+  out
+}
+
+#' Explore dataset choices, with the sub-study observations when available
+#' @noRd
+explore_choices <- function(has_substudies) {
+  if (has_substudies) c(explore_dataset_choices, "Sub-study observations (pooled data)" = "substudies") else explore_dataset_choices
 }
 
 #' Input ids inside esquisse's module, relative to the Explore module

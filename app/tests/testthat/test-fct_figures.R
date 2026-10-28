@@ -56,3 +56,34 @@ test_that("new bands move someone off the overlay, which never draws them, and n
   expect_null(view_for_bands("single", TRUE))
   expect_null(view_for_bands(NULL, TRUE))
 })
+
+test_that("components must add up to the analysed data", {
+  pooled <- pooled_crypto()
+  expect_true(components_match(pooled$components, pooled$data))
+  changed <- pooled$components
+  changed$positive[[1L]] <- changed$positive[[1L]] + 1L
+  expect_false(components_match(changed, pooled$data))
+  expect_false(components_match(NULL, pooled$data))
+  expect_false(components_match(pooled$components, example_data()))
+})
+
+test_that("observed points can be coloured by a sub-study field in every view", {
+  pooled <- pooled_crypto(bootstrap = TRUE)
+  for (type in c("overlay", "panels", "single")) {
+    plain <- build_figure(pooled$analysis, type, "exponential")
+    coloured <- build_figure(pooled$analysis, type, "exponential", pooled$components, "strain")
+    # The merged points are replaced, not added to.
+    expect_equal(length(coloured$layers), length(plain$layers))
+    built <- ggplot2::ggplot_build(coloured)
+    points <- built$data[[length(coloured$layers)]]
+    expect_equal(nrow(points) %% nrow(pooled$components), 0L)
+    expect_equal(coloured$labels[[if (type == "overlay") "fill" else "colour"]], "Strain or isolate")
+  }
+})
+
+test_that("figures are unchanged without components or a field", {
+  pooled <- pooled_crypto()
+  plain <- build_figure(pooled$analysis, "panels")
+  expect_equal(length(build_figure(pooled$analysis, "panels", components = pooled$components)$layers), length(plain$layers))
+  expect_identical(recolour_observed(plain, example_data(), pooled$components, "strain"), plain)
+})

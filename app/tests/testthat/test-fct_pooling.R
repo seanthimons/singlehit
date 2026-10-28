@@ -200,3 +200,12 @@ test_that("pooled data for Fit sum shared doses under one set of metadata", {
   expect_match(unique(standardized$study_id), "^Pooled: .*#108 \\+ .*#139$")
   expect_equal(unique(standardized$dose_unit), "oocysts")
 })
+
+test_that("components keep each experiment's dose groups and add up to the pooled data", {
+  pooled <- pooled_crypto()
+  components <- pooled$components
+  expect_setequal(unique(components$experiment), c("#140 (TAMU isolate)", "#141 (UCP isolate)", "#183 (Moredun isolate)"))
+  expect_true(all(c("strain", "host", "route", "outcome", "total", "response") %in% names(components)))
+  expect_equal(sum(components$total), sum(pooled$data$total))
+  expect_true(components_match(components, pooled$data))
+})

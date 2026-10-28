@@ -78,14 +78,30 @@ mod_explore_ui <- function(id) {
 #'
 #' @param id Module id.
 #' @param analysis Reactive returning a `qdr_analysis`, or `NULL`.
+#' @param components Reactive returning the per-experiment dose groups of
+#'   pooled data, or `NULL`. Used only when they add up to the analysed data.
 #' @return A reactive returning the data frame being explored.
 #' @noRd
-mod_explore_server <- function(id, analysis) {
+mod_explore_server <- function(id, analysis, components = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
     output$has_analysis <- renderText(if (is.null(analysis())) "no" else "yes")
     outputOptions(output, "has_analysis", suspendWhenHidden = FALSE)
 
-    all_datasets <- reactive(explore_datasets(req(analysis())))
+    matched_components <- reactive({
+      if (!is.null(analysis()) && components_match(components(), analysis()$data)) components()
+    })
+    all_datasets <- reactive(explore_datasets(req(analysis()), matched_components()))
+    # Offer the sub-study observations only while they exist, and leave them
+    # for the observed groups if they disappear while selected.
+    # A reactiveVal ignores a set to the same value, so re-running the analysis
+    # does not touch the dataset input (which would upset a pending preset).
+    has_substudies <- reactiveVal(FALSE)
+    observe(has_substudies(!is.null(matched_components())))
+    observeEvent(has_substudies(), {
+      selected <- isolate(input$dataset)
+      if (!has_substudies() && identical(selected, "substudies")) selected <- "observed"
+      updateSelectInput(session, "dataset", choices = explore_choices(has_substudies()), selected = selected)
+    }, ignoreInit = TRUE)
     # Judged on the data, not on whether a bootstrap is attached: a bootstrap
     # with too few converged replicates gives bare curves with no bands to draw.
     output$has_bands <- renderText({

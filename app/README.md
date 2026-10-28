@@ -76,6 +76,13 @@ depends on the app.
   singlehit adds up counts at doses the experiments share, so the fitted
   parameters match the pooled fit but goodness of fit and the bootstrap use
   the merged dose groups, while the test keeps each experiment's rows apart.
+  Each experiment's dose groups and metadata (experiment, strain or isolate,
+  host, route, outcome) travel with the pooled data: the Plots tab can colour
+  the observed points by any of them, one point per experiment and dose sized
+  by subjects, and the Explore tab adds a "Sub-study observations" dataset
+  with the pooled model's fitted value at each dose (one row per experiment,
+  dose, and model). Both are used only while they add up to the data being
+  analysed.
 
   An **exploratory** section runs singlehit's `group_datasets()` on the set
   (every pairwise test as a heatmap, then a grouping over all ways to split

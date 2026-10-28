@@ -32,5 +32,6 @@ test_that("pooled data sent from the Pooling tab become the current dataset", {
     session$setInputs(`pooling-send` = 1)
     expect_match(unique(data()$study_id), "^Pooled: ")
     expect_equal(unique(data()$dose_unit), "oocysts")
+    expect_setequal(unique(upload$components()$experiment), c("#108 (Iowa strain)", "#139 (Iowa isolate)"))
   })
 })

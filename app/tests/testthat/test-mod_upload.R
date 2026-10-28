@@ -125,3 +125,16 @@ test_that("a bad workbook reports an error and keeps the previous workbook", {
     expect_null(workbook_error())
   })
 })
+
+test_that("components sent with pooled data are kept until something else loads", {
+  sent <- shiny::reactiveVal(NULL)
+  pooled <- pooled_crypto()
+  shiny::testServer(mod_upload_server, args = list(incoming = sent), {
+    sent(list(data = pooled$data, label = "Pooled", source = "Pooling tab", components = pooled$components, sent = 1L))
+    session$flushReact()
+    expect_equal(session$returned$components(), pooled$components)
+
+    session$setInputs(example = 1)
+    expect_null(session$returned$components())
+  })
+})

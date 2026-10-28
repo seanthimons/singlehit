@@ -68,11 +68,13 @@ mod_upload_table_ui <- function(id) {
 #'
 #' @param id Module id.
 #' @param incoming Reactive returning `NULL` or a list with `data` (a data frame
-#'   of dose groups), `label` (where it came from), and `sent` (a counter, so
-#'   sending the same experiment again reloads it).
+#'   of dose groups), `label` (where it came from), optionally `source` and
+#'   `components` (per-experiment dose groups for pooled data), and `sent` (a
+#'   counter, so sending the same experiment again reloads it).
 #' @return A list of reactives: `data`, the standardized data or `NULL`;
 #'   `workbook`, the workbook rows or `NULL`; `workbook_name`, where it came
-#'   from; and `workbook_loaded`, a counter
+#'   from; `components`, the per-experiment dose groups that came with pooled
+#'   data from the Pooling tab, or `NULL`; and `workbook_loaded`, a counter
 #'   that changes each time a workbook loads successfully.
 #' @noRd
 mod_upload_server <- function(id, incoming = reactive(NULL)) {
@@ -136,7 +138,11 @@ mod_upload_server <- function(id, incoming = reactive(NULL)) {
     observeEvent(incoming(), {
       sent <- incoming()
       from <- if (is.null(sent$source)) "Library tab" else sent$source
-      load_source(list(data = sent$data, label = paste0(sent$label, " (from the ", from, ")")))
+      load_source(list(
+        data = sent$data,
+        label = paste0(sent$label, " (from the ", from, ")"),
+        components = sent$components
+      ))
     })
 
     # Same reader settings as singlehit::read_dose_response(), so the offered
@@ -216,6 +222,7 @@ mod_upload_server <- function(id, incoming = reactive(NULL)) {
       data = reactive(if (inherits(parsed(), "error")) NULL else parsed()),
       workbook = reactive(workbook()),
       workbook_name = reactive(workbook_name()),
+      components = reactive(loaded()$components),
       workbook_loaded = reactive(workbook_loaded())
     )
   })

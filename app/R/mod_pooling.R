@@ -52,7 +52,9 @@ mod_pooling_ui <- function(id) {
 #' @param workbook_loaded Reactive counter that changes on every workbook load,
 #'   including reloading the same file, which leaves `rows()` unchanged.
 #' @return A list with `sent`: `NULL` until pooled data are sent to the Data
-#'   tab, then a list of `data`, `label`, `source`, and `sent` (a counter).
+#'   tab, then a list of `data`, `label`, `source`, `components` (each
+#'   experiment's dose groups with its metadata, from [pool_components()]),
+#'   and `sent` (a counter).
 #' @noRd
 mod_pooling_server <- function(id, rows, experiments, pool_set, workbook_name = reactive(NULL), workbook_loaded = reactive(0L)) {
   moduleServer(id, function(input, output, session) {
@@ -308,7 +310,14 @@ mod_pooling_server <- function(id, rows, experiments, pool_set, workbook_name = 
       req(current, !inherits(current$run, "error"), identical(current$selection$experiment_key, selection()$experiment_key))
       chosen <- current$selection
       informed <- set_origin() != "Library"
-      data <- tryCatch(pool_fit_data(pool_datasets(rows(), chosen), chosen, informed), error = function(e) e)
+      built <- tryCatch(
+        {
+          datasets <- pool_datasets(rows(), chosen)
+          list(data = pool_fit_data(datasets, chosen, informed), components = pool_components(datasets, chosen))
+        },
+        error = function(e) e
+      )
+      data <- if (inherits(built, "error")) built else built$data
       if (inherits(data, "error")) {
         showNotification(conditionMessage(data), type = "error")
         return()
@@ -318,7 +327,13 @@ mod_pooling_server <- function(id, rows, experiments, pool_set, workbook_name = 
       if (informed) {
         label <- paste0(label, " [data-informed set]")
       }
-      sent(list(data = data, label = label, source = "Pooling tab", sent = send_count()))
+      sent(list(
+        data = data,
+        label = label,
+        source = "Pooling tab",
+        components = built$components,
+        sent = send_count()
+      ))
       append_log(pool_log_rows(
         kind = "sent to Fit",
         selection = chosen,
