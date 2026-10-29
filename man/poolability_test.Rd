@@ -38,8 +38,14 @@ Datasets are combined by stacking their rows (each dataset's dose groups are
 kept as separate binomial observations); they are not aggregated, so repeated
 doses across datasets are preserved.
 
-Check that hosts, dose units, and endpoints match before testing.
-The current pooling functions do not enforce metadata compatibility.
+Doses are only comparable within one unit, so \code{dose_unit} is
+enforced: when any dataset carries a \code{dose_unit} column, every dataset must
+carry one and all must name the same unit, compared without regard to case
+or surrounding spaces ("CFU" and "cfu" match; "CFU" and "log10 CFU" do
+not). Otherwise an error names each dataset's unit. Within one dataset,
+\code{\link[=as_dose_response]{as_dose_response()}} requires a single exact value. Datasets without a
+\code{dose_unit} column are not checked. Hosts and endpoints are not enforced;
+check that they match before testing.
 \code{poolable = TRUE} means the test did not detect a significantly worse pooled
 fit at \code{alpha}; it does not prove equivalence or adequate absolute fit.
 Inspect \code{converged} before interpreting the result.

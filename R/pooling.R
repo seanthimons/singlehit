@@ -14,8 +14,9 @@
 #'   [plot_dose_response()] with a fit and its bootstrap to draw bands, because a
 #'   pooled fit is not a `qdr_analysis`.
 #' @details The datasets are not tested for poolability here; run
-#'   [poolability_test()] first. Check metadata compatibility as well, since it
-#'   is not enforced. Single-dataset input is allowed and fits that dataset alone.
+#'   [poolability_test()] first. Datasets that carry `dose_unit` metadata must
+#'   share one unit (see [poolability_test()]); host and endpoint are not
+#'   checked. Single-dataset input is allowed and fits that dataset alone.
 #' @examples
 #' path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
 #' raw <- readr::read_csv(path, show_col_types = FALSE)
@@ -55,8 +56,14 @@ fit_pooled_dose_response <- function(datasets, models = c("exponential", "beta_p
 #'   `deviance_pooled`, `deviance_unpooled`, `lrt_statistic`, `df`,
 #'   `chi_square_critical`, `p_value`, `poolable`, `converged`, and a
 #'   human-readable `conclusion`.
-#' @details Check that hosts, dose units, and endpoints match before testing.
-#' The current pooling functions do not enforce metadata compatibility.
+#' @details Doses are only comparable within one unit, so `dose_unit` is
+#' enforced: when any dataset carries a `dose_unit` column, every dataset must
+#' carry one and all must name the same unit, compared without regard to case
+#' or surrounding spaces ("CFU" and "cfu" match; "CFU" and "log10 CFU" do
+#' not). Otherwise an error names each dataset's unit. Within one dataset,
+#' [as_dose_response()] requires a single exact value. Datasets without a
+#' `dose_unit` column are not checked. Hosts and endpoints are not enforced;
+#' check that they match before testing.
 #' `poolable = TRUE` means the test did not detect a significantly worse pooled
 #' fit at `alpha`; it does not prove equivalence or adequate absolute fit.
 #' Inspect `converged` before interpreting the result.
@@ -132,7 +139,8 @@ poolability_test <- function(datasets, models = c("exponential", "beta_poisson")
 #'   Each row describes one combination under one model.
 #' @details A passing pair need not remain poolable after another dataset is
 #' added. Inspect the row for the complete combination you intend to pool.
-#' Check metadata compatibility before testing; it is not enforced here.
+#' Datasets must share one `dose_unit` when they carry one, as in
+#' [poolability_test()]; hosts and endpoints are not checked.
 #' Use [group_datasets()] to choose non-overlapping groups from these trials.
 #' @examples
 #' path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
@@ -197,7 +205,8 @@ poolability_combinations <- function(
 #' @details Group numbers are labels within a model, not rankings. This function
 #' returns assignments, not pooled datasets or fitted models. Use
 #' [poolability_combinations()] to inspect overlapping candidate combinations.
-#' Check metadata compatibility before grouping; it is not enforced here.
+#' Datasets must share one `dose_unit` when they carry one, as in
+#' [poolability_test()]; hosts and endpoints are not checked.
 #' @examples
 #' path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
 #' raw <- readr::read_csv(path, show_col_types = FALSE)
@@ -259,7 +268,7 @@ standardize_datasets <- function(datasets) {
     stop("`datasets` must be a non-empty list of dose-response datasets.", call. = FALSE)
   }
   names(datasets) <- dataset_names(datasets)
-  purrr::imap(datasets, function(dataset, name) {
+  standardized <- purrr::imap(datasets, function(dataset, name) {
     tryCatch(
       as_dose_response(dataset),
       error = function(cnd) {
@@ -267,6 +276,37 @@ standardize_datasets <- function(datasets) {
       }
     )
   })
+  check_shared_dose_unit(standardized)
+  standardized
+}
+
+# Doses in different units are not comparable, so pooled or jointly tested
+# datasets must share one. Datasets without unit metadata are not checked.
+check_shared_dose_unit <- function(standardized) {
+  has_unit <- vapply(standardized, function(dataset) "dose_unit" %in% names(dataset), logical(1))
+  if (!any(has_unit)) {
+    return(invisible(standardized))
+  }
+  if (!all(has_unit)) {
+    stop(
+      sprintf(
+        "Only some datasets record `dose_unit` (missing from %s). Add `dose_unit` to every dataset or remove it from all of them.",
+        paste0("'", names(standardized)[!has_unit], "'", collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+  units <- vapply(standardized, function(dataset) as.character(dataset$dose_unit[[1L]]), character(1))
+  if (length(unique(tolower(trimws(units)))) > 1L) {
+    stop(
+      sprintf(
+        "Datasets record different dose units, so their doses are not comparable: %s. Pool only datasets that share a unit.",
+        paste0("'", names(standardized), "' (", units, ")", collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+  invisible(standardized)
 }
 
 dataset_names <- function(datasets) {

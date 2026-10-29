@@ -40,7 +40,8 @@ equivalence, and results with \code{converged = FALSE} may be unreliable.
 \details{
 A passing pair need not remain poolable after another dataset is
 added. Inspect the row for the complete combination you intend to pool.
-Check metadata compatibility before testing; it is not enforced here.
+Datasets must share one \code{dose_unit} when they carry one, as in
+\code{\link[=poolability_test]{poolability_test()}}; hosts and endpoints are not checked.
 Use \code{\link[=group_datasets]{group_datasets()}} to choose non-overlapping groups from these trials.
 }
 \examples{

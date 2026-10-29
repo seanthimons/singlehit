@@ -112,3 +112,21 @@ test_that("bands arriving while on the panel or single view leave the choice alo
     expect_equal(updates, 0L)
   }
 })
+
+test_that("the colour-by choice appears only for matching sub-study data", {
+  pooled <- pooled_crypto()
+  components <- shiny::reactiveVal(pooled$components)
+  shiny::testServer(mod_figures_server, args = list(analysis = shiny::reactive(pooled$analysis), components = components), {
+    session$setInputs(type = "panels")
+    expect_true(matched())
+    expect_match(output$colour_by_ui$html, "Colour observed points by")
+    session$setInputs(colour_by = "strain")
+    expect_equal(figure()$labels$colour, "Strain or isolate")
+
+    # Stale components are ignored even though the input keeps its value.
+    components(example_data())
+    session$flushReact()
+    expect_false(matched())
+    expect_null(figure()$labels$colour)
+  })
+})

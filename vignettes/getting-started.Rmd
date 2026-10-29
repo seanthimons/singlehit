@@ -285,8 +285,9 @@ names(collection$datasets)
 The output names A, B, and C. Keep the pathogen name once on the collection.
 Split by `study_id` before coercion because it identifies an individual
 experiment. `read_dose_response()` handles one experiment at a time and rejects
-mixed identity values. Check that hosts, units, and endpoints match before
-pooling; the current pooling functions do not enforce that comparison.
+mixed identity values. The pooling functions refuse datasets that record
+different dose units; they do not compare hosts or endpoints, so check those
+match before pooling.
 
 ### Inspect every combination
 
@@ -328,7 +329,19 @@ pair[c("model", "p_value", "poolable", "converged", "conclusion")]
 
 For this example, A and B are candidates for a shared fit; keep C separate.
 The report and grouping functions test poolability and return assignments.
-They do not create a pooled analysis or establish goodness of fit. A later
-pooled fit must preserve separate trial observations at repeated doses;
-simply coercing stacked trials would aggregate those observations or reject
-mixed identities.
+They do not create a pooled analysis or establish goodness of fit.
+`fit_pooled_dose_response()` fits the shared curve, stacking the trials so
+that observations at repeated doses stay separate:
+
+```{r pooling-fit}
+pooled <- fit_pooled_dose_response(collection$datasets[c("A", "B")], models = "exponential")
+pooled$exponential
+```
+
+These synthetic trials were built so that the answer is clear. With real
+studies it rarely is: each study has few doses, the test has little power,
+and choosing groups from the test results biases the pooled fit. The
+[pooling article](https://seanthimons.github.io/singlehit/articles/pooling.html)
+works through real Cryptosporidium challenge data: how to read the pairwise
+results, why "not rejected" is not "the same", why groupings are not unique,
+and how to report a pooled fit.

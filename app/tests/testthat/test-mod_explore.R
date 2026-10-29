@@ -192,3 +192,19 @@ test_that("the bands button is hidden when the bootstrap gives no bands", {
     expect_equal(output$has_bands, "no")
   })
 })
+
+test_that("sub-study observations are offered only while they match", {
+  pooled <- pooled_crypto()
+  components <- shiny::reactiveVal(pooled$components)
+  shiny::testServer(mod_explore_server, args = list(analysis = shiny::reactive(pooled$analysis), components = components), {
+    session$flushReact()
+    expect_true(has_substudies())
+    session$setInputs(dataset = "substudies")
+    expect_true("experiment" %in% names(dataset()))
+
+    components(NULL)
+    session$flushReact()
+    expect_false(has_substudies())
+    expect_null(all_datasets()$substudies)
+  })
+})

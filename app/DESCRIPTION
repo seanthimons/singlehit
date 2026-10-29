@@ -22,16 +22,22 @@ Imports:
     generics,
     ggplot2,
     golem,
+    grDevices,
     mirai (>= 2.5.0),
     parallel,
     plotly,
     readr,
+    readxl,
+    scales,
     shiny,
-    singlehit (>= 0.3.0)
+    singlehit (>= 0.3.0),
+    stats,
+    tools
 Suggests:
     pkgload,
     testthat (>= 3.1.7),
-    withr
+    withr,
+    writexl
 Remotes:
     seanthimons/singlehit
 Config/testthat/edition: 3

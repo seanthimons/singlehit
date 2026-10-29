@@ -30,8 +30,9 @@ two binomial observations.
 }
 \details{
 The datasets are not tested for poolability here; run
-\code{\link[=poolability_test]{poolability_test()}} first. Check metadata compatibility as well, since it
-is not enforced. Single-dataset input is allowed and fits that dataset alone.
+\code{\link[=poolability_test]{poolability_test()}} first. Datasets that carry \code{dose_unit} metadata must
+share one unit (see \code{\link[=poolability_test]{poolability_test()}}); host and endpoint are not
+checked. Single-dataset input is allowed and fits that dataset alone.
 }
 \examples{
 path <- system.file("extdata", "pooling-example.csv", package = "singlehit")

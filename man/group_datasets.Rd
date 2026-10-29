@@ -48,7 +48,8 @@ models.
 Group numbers are labels within a model, not rankings. This function
 returns assignments, not pooled datasets or fitted models. Use
 \code{\link[=poolability_combinations]{poolability_combinations()}} to inspect overlapping candidate combinations.
-Check metadata compatibility before grouping; it is not enforced here.
+Datasets must share one \code{dose_unit} when they carry one, as in
+\code{\link[=poolability_test]{poolability_test()}}; hosts and endpoints are not checked.
 }
 \examples{
 path <- system.file("extdata", "pooling-example.csv", package = "singlehit")

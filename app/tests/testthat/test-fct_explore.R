@@ -64,3 +64,15 @@ test_that("mapping_matches() compares esquisse's slot mapping with the wanted va
   expect_false(mapping_matches(list(xvar = "dose"), wanted))
   expect_false(mapping_matches(NULL, wanted))
 })
+
+test_that("pooled data add the sub-study observations with fitted values", {
+  pooled <- pooled_crypto()
+  datasets <- explore_datasets(pooled$analysis, pooled$components)
+  substudies <- datasets$substudies
+  expect_equal(nrow(substudies), 2L * nrow(pooled$components))
+  expect_true(all(c("experiment", "strain", "model", "fitted", "response") %in% names(substudies)))
+  expect_true(all(substudies$fitted >= 0 & substudies$fitted <= 1))
+  expect_null(explore_datasets(pooled$analysis)$substudies)
+  expect_true("substudies" %in% explore_choices(TRUE))
+  expect_false("substudies" %in% explore_choices(FALSE))
+})

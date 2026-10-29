@@ -1,0 +1,358 @@
+---
+title: "Pooling experiments: tests, heatmaps, and forking paths"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 9, fig.height = 4.5)
+```
+
+When several challenge studies exist for one pathogen, it is tempting to
+combine them into one dose-response curve: more subjects, narrower intervals,
+one number to report. singlehit's pooling functions test whether that is
+defensible. This article explains what the tests do, how to read their
+results, and how to avoid the main trap, which is letting the test results
+choose the groups.
+
+```{r setup}
+library(singlehit)
+```
+
+## The data
+
+The bundled file holds six human Cryptosporidium challenge experiments
+compiled by the [QMRA wiki](https://qmrawiki.org). Every experiment used
+healthy adult volunteers, oral exposure, and doses counted in oocysts. Most
+differ in the parasite isolate, and one records a different outcome.
+
+```{r data}
+path <- system.file("extdata", "cryptosporidium-isolates.csv", package = "singlehit")
+raw <- readr::read_csv(path, show_col_types = FALSE, col_types = readr::cols(study_id = "c"))
+unique(raw[c("study_id", "isolate", "endpoint", "source")])
+trials <- split(raw, raw$study_id)
+```
+
+Each experiment has four to eight dose groups with a handful of volunteers in
+each. That small size matters for everything below.
+
+## What a poolability test asks
+
+`poolability_test()` runs the likelihood-ratio test described by Haas, Rose,
+and Gerba. For a set of experiments it:
+
+1. fits each experiment separately and adds up their deviances (the lack of
+   fit);
+2. stacks every experiment's dose groups and fits one shared curve;
+3. takes the difference in deviance as the test statistic. Sharing one curve
+   can only fit as well or worse, so the statistic is never negative;
+4. compares it with a chi-squared distribution whose degrees of freedom are
+   the parameters saved by sharing: one per extra experiment for the
+   exponential model (*k*), two per extra experiment for beta-Poisson
+   (*alpha* and *N50*).
+
+The p-value answers one narrow question: *if these experiments really shared
+one curve, how surprising would this much extra lack of fit be?* A small
+p-value is evidence that they do not share a curve. A large one only means the
+data could not tell them apart.
+
+## Decide the groups first
+
+The grouping should come from what the experiments are, decided before
+looking at any test: same pathogen and isolate, same outcome, same host and
+route, same dose unit. For these data the isolate is the obvious candidate,
+because isolates of Cryptosporidium are known to differ in infectivity.
+
+singlehit enforces one of these conditions itself. Doses in different units
+are not comparable, so datasets that record different `dose_unit` values are
+refused:
+
+```{r unit-guard}
+relabelled <- trials[c("139", "140")]
+relabelled[["140"]]$dose_unit <- "genome copies"
+tryCatch(poolability_test(relabelled), error = conditionMessage)
+```
+
+Hosts, routes, isolates, and outcomes are not checked. Comparing them is your
+job.
+
+## A prespecified test
+
+Messner and colleagues (2001) analysed three isolates challenged in the same
+programme: Iowa (139), TAMU (140), and UCP (141). A natural prespecified
+question is whether the three isolates share one curve.
+
+```{r confirmatory}
+isolates <- poolability_test(trials[c("139", "140", "141")])
+isolates[c("model", "lrt_statistic", "df", "p_value", "converged")]
+```
+
+```{r confirmatory-values, include = FALSE}
+fp <- function(p) if (p < 0.001) "p < 0.001" else paste("p =", signif(p, 2))
+p_iso_exp <- isolates$p_value[isolates$model == "exponential"]
+p_iso_bp <- isolates$p_value[isolates$model == "beta_poisson"]
+```
+
+Pooling is rejected under both models (exponential `r fp(p_iso_exp)`,
+beta-Poisson `r fp(p_iso_bp)`). The
+separate fits show why: the isolates differ several-fold in median
+infectious dose.
+
+```{r separate-fits}
+n50 <- vapply(c("139", "140", "141"), function(id) {
+  fit <- fit_dose_response(trials[[id]], "beta_poisson")
+  generics::tidy(fit)$estimate[generics::tidy(fit)$term == "n50"]
+}, numeric(1))
+round(n50)
+```
+
+The defensible conclusion is to model the isolates separately, or to model
+the variation between them explicitly (Messner and colleagues used a
+hierarchical model for exactly this), rather than to report one pooled curve.
+Had the test not rejected pooling, `fit_pooled_dose_response()` would fit the
+shared curve to the stacked dose groups.
+
+## Exploring every pair
+
+Sometimes you want to see the structure first: which experiments look
+alike? `group_datasets()` tests every pair and then proposes a grouping. The
+pairwise p-values are attached to its result.
+
+The two `group_datasets()` searches in this article take about a minute
+together, so their results were computed ahead of time by
+`data-raw/pooling-article-results.R` and are read from a saved file; everything
+else runs as the article is built.
+
+```{r frozen, include = FALSE}
+frozen <- readRDS("pooling-results.rds")
+if (!isTRUE(all.equal(frozen$data, as.data.frame(raw), check.attributes = FALSE))) {
+  stop("The example data changed: rerun data-raw/pooling-article-results.R.")
+}
+```
+
+```{r explore, eval = FALSE}
+# Collect the convergence warnings rather than printing one per refit.
+warnings <- character()
+explore <- withCallingHandlers(
+  group_datasets(trials, method = "agglomerative"),
+  warning = function(w) {
+    warnings <<- c(warnings, conditionMessage(w))
+    invokeRestart("muffleWarning")
+  }
+)
+unique(warnings)
+pairwise <- attr(explore, "pairwise")
+```
+
+```{r explore-frozen, echo = FALSE}
+explore <- frozen$explore
+warnings <- frozen$warnings
+pairwise <- attr(explore, "pairwise")
+# A cheap live test of one pair, so a change in the pooling code that moves
+# the saved results stops the build instead of passing silently.
+live <- suppressWarnings(poolability_test(trials[c("108", "139")]))
+live_p <- stats::setNames(live$p_value, live$model)
+# The tolerance allows for small optimizer differences between platforms.
+if (!isTRUE(all.equal(live_p[["exponential"]], pairwise$exponential["108", "139"], tolerance = 1e-4)) ||
+    !isTRUE(all.equal(live_p[["beta_poisson"]], pairwise$beta_poisson["108", "139"], tolerance = 1e-4))) {
+  stop("The saved results no longer match the pooling code: rerun data-raw/pooling-article-results.R.")
+}
+unique(warnings)
+```
+
+```{r heatmap, fig.height = 4.8}
+cells <- do.call(rbind, lapply(names(pairwise), function(model) {
+  p <- pairwise[[model]]
+  grid <- expand.grid(a = rownames(p), b = colnames(p), stringsAsFactors = FALSE)
+  grid$p <- p[cbind(grid$a, grid$b)]
+  grid$model <- model
+  grid[grid$a != grid$b, ]
+}))
+cells$model <- factor(cells$model, levels = c("exponential", "beta_poisson"), labels = c("Exponential", "Beta-Poisson"))
+cells$b <- factor(cells$b, levels = rev(sort(unique(cells$b))))
+
+ggplot2::ggplot(cells, ggplot2::aes(a, b, fill = p)) +
+  ggplot2::geom_tile(colour = "white") +
+  ggplot2::geom_text(ggplot2::aes(label = ifelse(p < 0.001, "<0.001", signif(p, 2))), size = 3.2) +
+  ggplot2::scale_fill_gradient(low = "#F4E1D2", high = "#0066A1", limits = c(0, 1), name = "Pairwise p") +
+  ggplot2::facet_wrap(ggplot2::vars(model)) +
+  ggplot2::labs(x = NULL, y = NULL) +
+  ggplot2::theme_minimal()
+```
+
+```{r explore-values, include = FALSE}
+pe <- pairwise$exponential
+pb <- pairwise$beta_poisson
+others_140 <- setdiff(rownames(pe), "140")
+mean_off <- function(p) mean(p[upper.tri(p)])
+```
+
+### Reading one cell
+
+Each square is one poolability test of two experiments. **Pale** means a
+small p-value: one shared curve fits clearly worse, so there is evidence the
+two differ. **Blue** means a large p-value: no evidence of a difference. The
+matrix is symmetric, and the diagonal is blank because an experiment always
+pools with itself. The grid reports no convergence flags, so read it
+alongside the warnings above: any cell can come from a fit that did not
+converge.
+
+In the exponential panel:
+
+- **140 (TAMU) is pale against everything** (largest p =
+  `r signif(max(pe["140", others_140]), 2)`). TAMU is far more infectious than
+  the other isolates, and no shared curve can fit it with any of them.
+- **108 and 139 (both Iowa) give p = `r signif(pe["108", "139"], 2)`.** That
+  looks like two studies agreeing, but see "Overlapping subjects" below.
+- **181 against 139 gives p = `r signif(pe["139", "181"], 2)`.** Experiment
+  181 is a different isolate (TU502) *and records a different outcome*
+  (diarrhea rather than infection). It should never be pooled with infection
+  data, yet the test does not reject it.
+
+### Why the beta-Poisson panel is bluer
+
+The same pairs give larger p-values under beta-Poisson (mean
+`r signif(mean_off(pb), 2)` against `r signif(mean_off(pe), 2)` for
+exponential). The experiments did not become more alike; the test became
+weaker. The second parameter lets each curve bend to fit its own data, the
+test has two degrees of freedom instead of one (a higher bar to reject), and
+with four to eight doses per experiment the approximate beta-Poisson model is
+poorly determined. Beta-Poisson comparisons of small studies typically have
+little power.
+
+## Three mistakes to avoid
+
+**"Not rejected" is not "the same".** A p-value of
+`r signif(pe["139", "181"], 2)` does not show that experiments 139 and 181
+share a curve; it shows these data cannot tell them apart. With so few
+volunteers, very different experiments often pass.
+
+**Pairwise results do not chain.** "A pools with B" and "B pools with C" does
+not mean A, B, and C share one curve. A group needs one curve for all its
+members, which is a stricter test than any pair.
+
+**Many tests, no correction.** Each panel holds `r choose(nrow(pe), 2)`
+tests, `r 2 * choose(nrow(pe), 2)` in all. At alpha = 0.05 you would expect
+a "rejection" or two by chance even if every experiment were identical, and
+pairs can pass just as arbitrarily. None of these p-values are adjusted.
+
+## Groupings are not unique
+
+`group_datasets()` turns the pairwise results into groups. The agglomerative
+method (above) repeatedly merges the most compatible pair of groups, testing
+each merged group as a whole, until no merge passes; the exhaustive
+method searches every way of splitting the experiments (203 ways for six) for
+the fewest groups that all pass.
+
+```{r exhaustive-code, eval = FALSE}
+exhaustive <- suppressWarnings(group_datasets(trials, method = "exhaustive"))
+```
+
+```{r exhaustive-frozen, include = FALSE}
+exhaustive <- frozen$exhaustive
+```
+
+```{r exhaustive}
+groups <- function(result, model) {
+  rows <- result[result$model == model, ]
+  vapply(split(rows$dataset, rows$group), paste, character(1), collapse = " + ")
+}
+list(
+  agglomerative = list(exponential = groups(explore, "exponential"), beta_poisson = groups(explore, "beta_poisson")),
+  exhaustive = list(exponential = groups(exhaustive, "exponential"), beta_poisson = groups(exhaustive, "beta_poisson"))
+)
+```
+
+```{r groups-values, include = FALSE}
+together <- function(result, model, a, b) {
+  rows <- result[result$model == model, ]
+  rows$group[rows$dataset == a] == rows$group[rows$dataset == b]
+}
+```
+
+The same data give different groupings depending on the model and the
+search method. Under beta-Poisson, the exhaustive search
+`r if (together(exhaustive, "beta_poisson", "108", "139")) "keeps" else "separates"`
+the two Iowa experiments, even though the heatmap shows no difference
+between them (p = `r signif(pb["108", "139"], 2)`). Several groupings pass the tests, and the search reports one of
+them. In both methods the TU502 diarrhea experiment (181) joins an infection
+group.
+
+This is the forking-paths problem
+([issue #20](https://github.com/seanthimons/singlehit/issues/20)): when the data choose the
+groups, a pooled curve fitted to a chosen group, and its test, are biased
+toward pooling. Use the exploration to sanity-check a grouping you decided
+on, not to choose one.
+
+## Overlapping subjects
+
+Look at experiments 108 and 139 side by side:
+
+```{r overlap}
+overlap <- merge(
+  trials[["108"]][c("dose", "positive", "negative")],
+  trials[["139"]][c("dose", "positive", "negative")],
+  by = "dose", suffixes = c("_108", "_139")
+)
+overlap
+```
+
+```{r overlap-values, include = FALSE}
+same_rows <- sum(overlap$positive_108 == overlap$positive_139 & overlap$negative_108 == overlap$negative_139)
+```
+
+The counts are identical at `r same_rows` of `r nrow(overlap)` doses and
+differ by one volunteer at the others. That strongly suggests both entries
+report largely the same Iowa volunteers: DuPont and colleagues (1995)
+reported an Iowa-isolate challenge, and Messner and colleagues (2001)
+analysed Iowa-isolate data from the same investigators (Chappell and
+Okhuysen are authors of both). The poolability test
+assumes independent samples, so its p-value of
+`r signif(pe["108", "139"], 2)` says nothing here, and pooling the two would
+count the same people twice. Check where each experiment's subjects came
+from before pooling.
+
+## Reporting
+
+A paragraph that reports this honestly might read:
+
+> Pairwise likelihood-ratio tests (exponential model,
+> `r choose(nrow(pe), 2)` unadjusted comparisons) showed that the TAMU
+> isolate differed from every other experiment (p < 0.01), and a test of the
+> three isolates studied by Messner et al. (2001) rejected a common curve
+> (p < 0.001). We therefore modelled isolates separately. Beta-Poisson
+> comparisons had low power (two degrees of freedom, four to eight doses per
+> study) and some fits did not converge, so we did not use them to group
+> experiments. Experiments 108 and 139 appear to share subjects and were not
+> pooled.
+
+## In the Shiny app
+
+The app's Pooling tab runs the same functions. It requires a written reason
+before each test, keeps a session log of every test and exploration, and
+marks any set chosen from an exploration, or lying within one, as
+*data-informed* in the tab, the log, and the label of pooled data sent to
+Fit. Its Library tab can filter experiments by strain or isolate, so a
+grouping can be decided before anything is tested.
+
+```{r premises, include = FALSE}
+# The text above interprets these results; stop the build if they change.
+stopifnot(
+  p_iso_exp < 0.001,
+  p_iso_bp < 0.05,
+  all(pe["140", others_140] < 0.01),
+  pe["108", "139"] > 0.05,
+  pe["139", "181"] > 0.05,
+  mean_off(pb) > mean_off(pe),
+  !identical(groups(explore, "beta_poisson"), groups(exhaustive, "beta_poisson")),
+  !together(exhaustive, "beta_poisson", "108", "139"),
+  # 181 (diarrhea) shares a group with an infection experiment in every result.
+  all(vapply(list(explore, exhaustive), function(result) {
+    all(vapply(c("exponential", "beta_poisson"), function(model) {
+      any(vapply(c("108", "139", "140", "141", "183"), function(id) together(result, model, id, "181"), logical(1)))
+    }, logical(1)))
+  }, logical(1))),
+  same_rows >= 6,
+  pb["108", "139"] > 0.05,
+  length(warnings) > 0,
+  max(n50) / min(n50) > 3
+)
+```

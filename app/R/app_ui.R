@@ -12,11 +12,14 @@ app_ui <- function(request) {
     # run starting can make the app unresponsive; this says why.
     shiny::useBusyIndicators(),
     bslib::page_navbar(
+      id = "main",
       title = "singlehit",
       bslib::nav_panel(
         "Data",
         bslib::layout_sidebar(sidebar = bslib::sidebar(mod_upload_ui("upload")), mod_upload_table_ui("upload"))
       ),
+      bslib::nav_panel("Library", mod_library_ui("library")),
+      bslib::nav_panel("Pooling", mod_pooling_ui("pooling")),
       bslib::nav_panel(
         "Fit",
         bslib::layout_sidebar(sidebar = bslib::sidebar(mod_fit_ui("fit")), mod_fit_results_ui("fit"))

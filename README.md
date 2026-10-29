@@ -223,9 +223,11 @@ poolability_test(collection$datasets)
 ```
 
 This list is an organizational convention, not a validated collection object.
-Check that hosts, dose units, and endpoints match before testing poolability;
-the current pooling functions do not enforce those checks. Recording matching
-metadata does not by itself establish that experiments should be pooled.
+The pooling functions refuse datasets whose `dose_unit` metadata differ, since
+doses in different units are not comparable. They do not check hosts or
+endpoints, so confirm those match before testing poolability. Recording
+matching metadata does not by itself establish that experiments should be
+pooled.
 
 ## Bootstrapping and run time
 
@@ -361,6 +363,8 @@ dataset separately and the stacked combination, then compares the deviance
 difference to a chi-squared distribution (per model). Datasets that pool
 significantly worse than when fit separately are kept distinct.
 `group_datasets()` extends this to find which trials are mutually poolable.
+Datasets that record `dose_unit` must all record the same unit; mixed units are
+an error.
 
 ```r
 trials <- list(trial_a = data_a, trial_b = data_b, trial_c = data_c)
@@ -385,6 +389,16 @@ Combination reporting and exhaustive grouping both default to at most six
 trials because their searches grow rapidly. These are exploratory tests without
 multiple-testing adjustment; passing a test does not prove equivalence.
 Compare only experiments with matching hosts, units, and endpoints.
+
+Decide which experiments belong together (same isolate, outcome, host, and
+route) before testing, and use `poolability_combinations()` and
+`group_datasets()` to check that choice rather than to make it: with few doses
+per study the test rarely rejects, different searches return different
+groupings, and a group chosen from the results biases its pooled fit toward
+pooling. Also check that experiments do not share subjects, since the test
+assumes independent samples. The
+[pooling article](https://seanthimons.github.io/singlehit/articles/pooling.html)
+walks through these points with real Cryptosporidium challenge data.
 
 Datasets are combined by **stacking** — each trial's dose groups are kept as
 separate binomial observations, so repeated doses across trials are preserved

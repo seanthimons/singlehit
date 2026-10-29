@@ -124,3 +124,35 @@ test_that("bundled synthetic collection demonstrates passing and failing combina
     expect_false(g$group[g$dataset == "A"] == g$group[g$dataset == "C"])
   }
 })
+
+with_unit <- function(data, unit) {
+  data$dose_unit <- unit
+  data
+}
+
+test_that("pooling functions refuse datasets in different dose units", {
+  a <- with_unit(ward_fixture(), "FFU")
+  b <- with_unit(ward_fixture(), "PFU")
+  expect_error(poolability_test(list(a = a, b = b)), "different dose units.*'a' \\(FFU\\).*'b' \\(PFU\\)")
+  expect_error(poolability_combinations(list(a = a, b = b)), "different dose units")
+  expect_error(group_datasets(list(a = a, b = b)), "different dose units")
+})
+
+test_that("dose units match regardless of case and surrounding spaces", {
+  a <- with_unit(ward_fixture(), "FFU")
+  b <- with_unit(ward_fixture(), " ffu ")
+  result <- poolability_test(list(a = a, b = b))
+  expect_true(all(result$poolable))
+})
+
+test_that("a dose unit on only some datasets is an error", {
+  a <- with_unit(ward_fixture(), "FFU")
+  expect_error(
+    poolability_test(list(a = a, b = ward_fixture())),
+    "Only some datasets record `dose_unit` \\(missing from 'b'\\)"
+  )
+})
+
+test_that("datasets without unit metadata are not checked", {
+  expect_no_error(poolability_test(list(a = ward_fixture(), b = ward_fixture())))
+})
