@@ -1,16 +1,49 @@
 
 
 
+## singlehit v0.4.0 (2026-10-29)
+
+#### Breaking changes
+
+- refuse to pool datasets in different dose units
+  ([ba62ac2](https://github.com/seanthimons/singlehit/tree/ba62ac22f9855b8045814f59a99db10b3463003d))
+
+#### New features
+
+- explore groups and send pooled data to Fit
+  ([b596cb6](https://github.com/seanthimons/singlehit/tree/b596cb68627e793c83519249000885e560fd6c52))
+- add 3-row outcome option and batch render for preferred-model overview
+  ([bdc1205](https://github.com/seanthimons/singlehit/tree/bdc1205de75692f8adde10002141e2d0dd474e2a))
+- add pathogen and outcome faceting modes
+  ([d05a7cb](https://github.com/seanthimons/singlehit/tree/d05a7cb5e01734b9d3bb1cbb94464ebfefeb9c9a))
+
+#### Bug fixes
+
+- cap how long one replicate may run
+  ([0e50ffe](https://github.com/seanthimons/singlehit/tree/0e50ffee5d1dc5e652ca88de0356a42ba5428ed5))
+
+#### CI
+
+- filter app-only commits out of the release notes
+  ([8945ee5](https://github.com/seanthimons/singlehit/tree/8945ee5e294b2956a81d0e2bfc8bb5e57e5d70f2))
+
+#### Docs
+
+- add prerequisites and bootstrapping run-time guidance
+  ([f8eacc6](https://github.com/seanthimons/singlehit/tree/f8eacc6f2d8163129470597db9426c10c06b241e))
+
+#### Other changes
+
+- release v0.4.0
+  ([16b8211](https://github.com/seanthimons/singlehit/tree/16b8211a47e8bd2f8716f1c9328a6a91d838a700))
+
+Full set of changes:
+[`v0.3.0...v0.4.0`](https://github.com/seanthimons/singlehit/compare/v0.3.0...v0.4.0)
+
 ## singlehit v0.3.0 (2026-10-20)
 
 #### New features
 
-- add Plots tab with the standard singlehit figures
-  ([527243d](https://github.com/seanthimons/singlehit/tree/527243d00e12e75ae6a75feb3c6b2a99f59456ea))
-- add Data, Fit and Compare tabs
-  ([85bbea4](https://github.com/seanthimons/singlehit/tree/85bbea4887134e5b9b7acae801f8ad0351fd2f4d))
-- scaffold golem Shiny app as sidecar package in app/
-  ([caf7d45](https://github.com/seanthimons/singlehit/tree/caf7d4525e5691526de689b843d123f48fd836e4))
 - add non-blocking bootstrap_progress()
   ([82c147c](https://github.com/seanthimons/singlehit/tree/82c147c13b390712652ced614f6e5dadcb352416))
 - add add_bootstrap() to attach bootstraps to an analysis
@@ -43,7 +76,7 @@
 #### Other changes
 
 - release v0.3.0
-  ([13c6f9e](https://github.com/seanthimons/singlehit/tree/13c6f9ed998c1884957275208b4c98d3ebf31291))
+  ([a5e8633](https://github.com/seanthimons/singlehit/tree/a5e86334a5fb98e403b6ee1b61831cb53325821c))
 - block root-level markdown and dot files by default
   ([a23143e](https://github.com/seanthimons/singlehit/tree/a23143e1241a053772222a1dd08e916bda726b18))
 
