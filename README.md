@@ -27,15 +27,18 @@ The package provides:
 If you would rather not write R code, the `singlehitapp` Shiny app runs the same
 analysis in your web browser. It is a separate package stored in the
 [`app/`](https://github.com/seanthimons/singlehit/tree/main/app) directory of
-this repository. Installing `singlehit` does not install the app, so install
-both:
+this repository, and each singlehit release includes the app at the same
+version. Installing `singlehit` does not install the app, but installing the
+app also installs the singlehit release it was built with:
 
 ```r
-install.packages("pak")                # only needed once
-pak::pak("seanthimons/singlehit")      # the package (the app needs 0.3.0 or later)
-pak::pak("seanthimons/singlehit/app")  # the app
-singlehitapp::run_app()                # opens the app in your browser
+install.packages("pak")                         # only needed once
+pak::pak("seanthimons/singlehit/app@*release")  # the latest app and its singlehit
+singlehitapp::run_app()                         # opens the app in your browser
 ```
+
+To install a specific release, replace `*release` with its tag, for example
+`app@v0.4.0`.
 
 The tabs, from left to right:
 

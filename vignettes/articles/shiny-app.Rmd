@@ -12,13 +12,18 @@ match the package's results.
 ## Install and launch
 
 The app is a separate package stored in the `app/` directory of the singlehit
-repository. Run these lines once at the R console:
+repository. Each singlehit release includes the app at the same version, and
+installing the app also installs the singlehit release it was built with. Run
+these lines once at the R console:
 
 ```r
 install.packages("pak")
-pak::pak("seanthimons/singlehit")      # singlehit 0.3.0 or later
-pak::pak("seanthimons/singlehit/app")  # the app
+pak::pak("seanthimons/singlehit/app@*release")  # the latest app and its singlehit
 ```
+
+To install a specific release, replace `*release` with its tag, for example
+`app@v0.4.0`. This replaces any other version of singlehit you have installed,
+including a development version from `main`.
 
 Then start it whenever you want to use it:
 
