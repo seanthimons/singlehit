@@ -1,6 +1,6 @@
 Package: singlehitapp
 Title: Shiny App for the 'singlehit' Dose-Response Package
-Version: 0.0.0.9000
+Version: 0.4.0
 Authors@R: c(
     person("Sean", "Thimons", email = "thimons.sean@gmail.com", role = c("aut", "cre"))
   )
@@ -30,7 +30,7 @@ Imports:
     readxl,
     scales,
     shiny,
-    singlehit (>= 0.3.0),
+    singlehit (>= 0.4.0),
     stats,
     tools
 Suggests:
@@ -39,6 +39,6 @@ Suggests:
     withr,
     writexl
 Remotes:
-    seanthimons/singlehit
+    seanthimons/singlehit@v0.4.0
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.0
