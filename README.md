@@ -24,10 +24,35 @@ The package provides:
 
 ## Shiny app
 
-A work-in-progress Shiny interface lives in the
-[`app/`](https://github.com/seanthimons/singlehit/tree/main/app) directory. It is
-a separate package that depends on `singlehit`; installing `singlehit` does not
-install or require it. The app is licensed under GPL-3, while `singlehit`
+If you would rather not write R code, the `singlehitapp` Shiny app runs the same
+analysis in your web browser. It is a separate package stored in the
+[`app/`](https://github.com/seanthimons/singlehit/tree/main/app) directory of
+this repository. Installing `singlehit` does not install the app, so install
+both:
+
+```r
+install.packages("pak")                # only needed once
+pak::pak("seanthimons/singlehit")      # the package (the app needs 0.3.0 or later)
+pak::pak("seanthimons/singlehit/app")  # the app
+singlehitapp::run_app()                # opens the app in your browser
+```
+
+The tabs, from left to right:
+
+- **Data:** load a CSV/TSV/TXT file or the Ward rotavirus example data. A QMRA
+  wiki `.xlsx` workbook, or the bundled sample, goes to the Library tab instead.
+- **Library:** filter and plot QMRA wiki experiments, send one to Fit, or choose
+  several to test for pooling.
+- **Pooling:** test whether the chosen experiments can share one curve, and send
+  the pooled data to Fit.
+- **Fit:** the dose-trend test, parameter estimates, and goodness of fit.
+- **Compare:** the recommended model and the full assessment.
+- **Bootstrap:** confidence intervals, computed in the background.
+- **Plots:** the fitted curves, with PNG download.
+- **Explore:** build your own plots by dragging variables.
+
+The [app guide](https://seanthimons.github.io/singlehit/articles/shiny-app.html)
+walks through each tab. The app is licensed under GPL-3, while `singlehit`
 remains MIT.
 
 ## Prerequisites

@@ -1,0 +1,142 @@
+---
+title: "Using the Shiny app"
+---
+
+The `singlehitapp` package lets you run a singlehit analysis in your web
+browser without writing R code. You load data, fit the models, compare them,
+add bootstrap confidence intervals, and download plots. You can also browse
+the QMRA wiki experiment library and test whether experiments can be pooled.
+Everything the app does calls exported singlehit functions, so its results
+match the package's results.
+
+## Install and launch
+
+The app is a separate package stored in the `app/` directory of the singlehit
+repository. Run these lines once at the R console:
+
+```r
+install.packages("pak")
+pak::pak("seanthimons/singlehit")      # singlehit 0.3.0 or later
+pak::pak("seanthimons/singlehit/app")  # the app
+```
+
+Then start it whenever you want to use it:
+
+```r
+singlehitapp::run_app()
+```
+
+The app opens in your browser. While it runs, the R console is busy. To stop
+the app, close the browser tab and press Esc (or Ctrl+C) in the console.
+
+If you are working from a clone of the repository, run the app against the
+source code instead:
+
+```r
+setwd("app")
+source("dev/run_dev.R")
+```
+
+## Analyse one dataset
+
+The tabs run from left to right. For a single dataset you use Data, then Fit,
+Compare, Bootstrap, Plots, and Explore.
+
+1. **Data.** Upload a `.csv`, `.tsv`, or `.txt` file with one row per dose
+   group, or press **Use Ward rotavirus example data**. The file needs the
+   columns described in [Input data format](../index.html#input-data-format).
+   If the app does not recognise the column names, choose the dose, positive,
+   and negative columns from the menus. The table shows the data that the
+   other tabs will analyse.
+2. **Fit.** Choose at least two models (exponential, beta-Poisson, and the
+   slower exact beta-Poisson) and the significance level, then press
+   **Run analysis**. The tab shows the dose-trend test, the parameter
+   estimates, and the goodness of fit. This step does not bootstrap.
+3. **Compare.** Read the primary recommendation first. It combines each
+   model's absolute fit with the chi-squared deviance comparison. The
+   assessment table below gives the details. The consensus vote is marked
+   *Experimental*, so do not use it as the main result.
+4. **Bootstrap.** Set the number of replicates (default 1,000) and an
+   optional random seed, then press **Run bootstrap**. The exact beta-Poisson
+   model has its own, smaller replicate count because it is much slower. The
+   bootstrap runs in the background, so you can use other tabs while it works.
+   Each model has a progress bar, and **Cancel** stops the run. When it
+   finishes, the tab shows percentile intervals for the parameters and
+   effective doses, and confidence bands appear on the Plots and Explore tabs.
+   Use the same seed to get the same intervals again.
+5. **Plots.** Show all fitted models in one panel (the overlay), one panel per
+   model, or a single model. Confidence bands appear in the per-model and
+   single-model views after a bootstrap; the overlay never shows bands. Set the
+   width, height, and resolution, then download the plot as a PNG.
+6. **Explore.** Build your own plot with
+   [esquisse](https://dreamrs.github.io/esquisse/) by dragging variables onto
+   the axes, colour, and other settings. Under **Data to explore**, choose the
+   observed dose groups, the fitted curves, or the residuals. After a
+   bootstrap, **Draw confidence bands** creates a ribbon plot of the fitted
+   curves on a log dose axis. To hover and zoom, turn on "Use {plotly} to
+   render plot" under Options.
+
+## Browse the QMRA wiki library and test pooling
+
+Pooling has its own path through the tabs: Data, Library, Pooling, and then
+Fit.
+
+1. **Data.** Press **Use QMRA wiki sample workbook**, or upload a QMRA wiki
+   `.xlsx` workbook with a "raw data" sheet. The bundled sample holds 18
+   experiments; the full workbook is not distributed with the app. A workbook
+   opens on the Library tab and leaves the current dataset unchanged.
+2. **Library.** Filter experiments by pathogen group, pathogen, outcome, dose
+   unit, host, exposure route, strain or isolate, and preferred model. The plot
+   draws each experiment's preferred model on a log dose axis. You can split it
+   into panels (facets) and colour it by any filter field except pathogen. Dose units
+   differ between studies, so compare curves only within one unit. Curves
+   reported by the wiki only as parameters are drawn dashed.
+   - To analyse one experiment, choose it and press **Send to Data and Fit**.
+     Experiments that singlehit cannot fit, such as those with fewer than
+     three doses, say why instead.
+   - To test pooling, choose two or more experiments under **Pooling set** and
+     press **Test poolability**.
+3. **Pooling.** Before the test will run, you must answer **Why do these
+   experiments belong together?** For example: same pathogen, host, route, and
+   outcome. Decide this before you look at any results. Then press
+   **Run poolability test**. The app blocks the test for data problems, such as
+   mixed or missing dose units, an experiment the wiki has already pooled, or
+   duplicate counts. Differences in pathogen, host, route, outcome, or strain
+   produce only a warning. The results show the likelihood-ratio test, each
+   experiment's own fit against the pooled fit, and the wiki's own pooled
+   entry if one exists. A test that does not reject pooling is not evidence
+   that the experiments are equivalent.
+4. **Send pooled data to Data and Fit** makes the tested set the current
+   dataset, so you can run Fit, Compare, Bootstrap, and Plots on it. Counts at
+   doses that the experiments share are added together. On the Plots tab you
+   can colour the observed points by experiment, strain, host, route, or
+   outcome.
+
+Every pooling run is recorded in a session log with the rationale, any
+warnings, and the p-values. Download it as CSV for your records. The log
+counts how many tests you have run, because none of the p-values are adjusted
+for multiple testing.
+
+The Pooling tab also has an **exploratory** section. It runs every pairwise
+test as a heatmap and searches for groups of experiments. Treat what it finds
+as a hypothesis, not a result. A pooling set chosen from it, or contained in a
+set you have already explored, is marked *data-informed* because its test is
+biased toward pooling. The
+[pooling article](https://seanthimons.github.io/singlehit/articles/pooling.html)
+explains why.
+
+Neither the checks nor the test can detect two entries that report the same
+subjects. For example, experiments 108 and 139 in the sample have identical
+counts at six of their eight doses. Pooling them would count the same
+volunteers twice.
+
+## Reporting problems
+
+Report bugs and confusing behaviour on the
+[issue tracker](https://github.com/seanthimons/singlehit/issues). Include:
+
+- the tab you were on;
+- what you clicked or entered;
+- what you expected to happen and what happened instead;
+- any error message; and
+- your data file, if you can share it.
