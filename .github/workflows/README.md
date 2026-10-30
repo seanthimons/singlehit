@@ -43,14 +43,28 @@ The release caller respects that policy:
    publishes the release. It does not bump the version or regenerate NEWS.
 
 Keep `dry-run: true` for validation; it remains the manual default. PRs that
-change `release.yaml` or `.github/scripts/filter-app-news.R` automatically validate
-preparation with dry-run enabled.
+change `release.yaml`, `.github/scripts/filter-app-news.R`, or
+`.github/scripts/sync-app-release.R` automatically validate preparation with
+dry-run enabled.
 Fork PRs skip this job because they cannot receive `RELEASE_PAT`. The old
 `version_type` input is replaced by `version-type`; `none` is unsupported.
-After autonewsmd writes NEWS.md, `.github/scripts/filter-app-news.R` removes entries for
-commits scoped `app` or touching only `app/`, since the Shiny app is not part of
-the package. NEWS.md is regenerated from history each release, so this also
-removes those entries from earlier versions' sections.
+
+Each release also releases the Shiny app in `app/` at the same version. After
+the version bump, `.github/scripts/sync-app-release.R` sets the app's
+`Version`, its `singlehit (>= VERSION)` requirement, its
+`Remotes: seanthimons/singlehit@vVERSION` pin, and `golem_version` in
+`app/inst/golem-config.yml`, so the release commit and tag hold both packages.
+`pak::pak("seanthimons/singlehit/app@vVERSION")` then installs the app with the
+matching singlehit. In publish mode the script only checks that the merged app
+files match and fails the release otherwise. Between releases, the app on
+`main` stays pinned to the last singlehit tag. Only the root package's tarball
+is built and checked; nothing in CI checks the app.
+
+After autonewsmd writes NEWS.md, `.github/scripts/filter-app-news.R` moves
+entries for commits scoped `app` or touching only `app/` into a `#### Shiny app`
+section at the end of their version, so they do not read as singlehit
+changes. NEWS.md is regenerated from history each release, so earlier
+versions' sections get the same treatment.
 
 If branch push succeeds but PR creation fails, open a PR from the existing
 `release/vVERSION` branch. If publication fails after the tag push, rerun

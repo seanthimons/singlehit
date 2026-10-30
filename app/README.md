@@ -123,11 +123,20 @@ export are planned.
 The app is licensed under GPL-3 (see `LICENSE.md`) because it imports esquisse,
 which is GPL-3. The `singlehit` package itself stays MIT.
 
-## Requires singlehit 0.3.0 or later
+## Releases
 
-The Bootstrap and Plots tabs use `singlehit` functions (`add_bootstrap()`,
-`bootstrap_progress()`) that were added in 0.3.0, so install `singlehit` 0.3.0
-or later (for example from GitHub with `pak::pak("seanthimons/singlehit")`).
+The app is released with `singlehit`, at the same version and under the same
+tag. The release workflow sets the app's version, raises its `singlehit`
+requirement to that version, and pins `Remotes` to the release tag, so
+
+```r
+pak::pak("seanthimons/singlehit/app@*release")  # or @v0.4.0 for a given release
+```
+
+installs the app with the `singlehit` release it was built with. Between
+releases, the app on `main` stays pinned to the last `singlehit` tag. If app
+code on `main` needs unreleased `singlehit` functions, use the development
+setup below.
 
 ## Running during development
 
@@ -154,8 +163,7 @@ This loads the in-repo `singlehit` first, so the tests do not need it installed.
 ## Running against an installed singlehit
 
 ```r
-pak::pak("seanthimons/singlehit")
-pak::pak("seanthimons/singlehit/app")
+pak::pak("seanthimons/singlehit/app@*release")
 singlehitapp::run_app()
 ```
 
