@@ -1,16 +1,72 @@
 
 
 
+## singlehit v0.4.0 (2026-10-30)
+
+#### Breaking changes
+
+- refuse to pool datasets in different dose units
+  ([ba62ac2](https://github.com/seanthimons/singlehit/tree/ba62ac22f9855b8045814f59a99db10b3463003d))
+
+#### New features
+
+- sync app releases with singlehit
+  ([69967a0](https://github.com/seanthimons/singlehit/tree/69967a021329485975c1834bfce321cbca89b362))
+- explore groups and send pooled data to Fit
+  ([b596cb6](https://github.com/seanthimons/singlehit/tree/b596cb68627e793c83519249000885e560fd6c52))
+- add 3-row outcome option and batch render for preferred-model overview
+  ([bdc1205](https://github.com/seanthimons/singlehit/tree/bdc1205de75692f8adde10002141e2d0dd474e2a))
+- add pathogen and outcome faceting modes
+  ([d05a7cb](https://github.com/seanthimons/singlehit/tree/d05a7cb5e01734b9d3bb1cbb94464ebfefeb9c9a))
+
+#### Bug fixes
+
+- cap how long one replicate may run
+  ([0e50ffe](https://github.com/seanthimons/singlehit/tree/0e50ffee5d1dc5e652ca88de0356a42ba5428ed5))
+
+#### CI
+
+- filter app-only commits out of the release notes
+  ([8945ee5](https://github.com/seanthimons/singlehit/tree/8945ee5e294b2956a81d0e2bfc8bb5e57e5d70f2))
+
+#### Docs
+
+- add prerequisites and bootstrapping run-time guidance
+  ([f8eacc6](https://github.com/seanthimons/singlehit/tree/f8eacc6f2d8163129470597db9426c10c06b241e))
+
+#### Other changes
+
+- release v0.4.0
+  ([1033309](https://github.com/seanthimons/singlehit/tree/103330929fd0da4b10028b7128e0974a6e4743dd))
+
+#### Shiny app
+
+- expose pooled sub-study observations
+  ([8a6a2a5](https://github.com/seanthimons/singlehit/tree/8a6a2a5b51a9dc8ec29a3f6a2b8531cbf694b933))
+- add Pooling tab for poolability testing
+  ([01d3f77](https://github.com/seanthimons/singlehit/tree/01d3f7794e2c5fca8f6b3ea7ea9ab9a369864f5d))
+- load workbooks on the Data tab and fix Library plot layout
+  ([84c036c](https://github.com/seanthimons/singlehit/tree/84c036c8b8739a77c238127eece76eb64a3b85f1))
+- add Library tab to browse and facet QMRA wiki experiments
+  ([87da56d](https://github.com/seanthimons/singlehit/tree/87da56de25408bb3fd4c7a8cc88b63cc2b9d01f8))
+- add a one-click confidence bands preset to Explore
+  ([09736d6](https://github.com/seanthimons/singlehit/tree/09736d625004a8fe9388f68638f3aa585bba0281))
+- raise replicate limit and show busy state
+  ([a114b80](https://github.com/seanthimons/singlehit/tree/a114b8075af9faa78d5a7e25ddddd5c286eeda33))
+- switch Plots to a view that draws bands, and require singlehit 0.3.0
+  ([4b9d049](https://github.com/seanthimons/singlehit/tree/4b9d049c251c887ef6422b01c5550cf2da942ef6))
+- assert the attributes useBusyIndicators() actually sets
+  ([c3269dc](https://github.com/seanthimons/singlehit/tree/c3269dc4cebaee82e099c011a5eb90c5a9bf867b))
+- add Shiny app guide
+  ([840ab86](https://github.com/seanthimons/singlehit/tree/840ab86de8e089d407a117788d8f74bda23aa5bb))
+
+Full set of changes:
+[`v0.3.0...v0.4.0`](https://github.com/seanthimons/singlehit/compare/v0.3.0...v0.4.0)
+
 ## singlehit v0.3.0 (2026-10-20)
 
 #### New features
 
-- add Plots tab with the standard singlehit figures
-  ([527243d](https://github.com/seanthimons/singlehit/tree/527243d00e12e75ae6a75feb3c6b2a99f59456ea))
-- add Data, Fit and Compare tabs
-  ([85bbea4](https://github.com/seanthimons/singlehit/tree/85bbea4887134e5b9b7acae801f8ad0351fd2f4d))
-- scaffold golem Shiny app as sidecar package in app/
-  ([caf7d45](https://github.com/seanthimons/singlehit/tree/caf7d4525e5691526de689b843d123f48fd836e4))
 - add non-blocking bootstrap_progress()
   ([82c147c](https://github.com/seanthimons/singlehit/tree/82c147c13b390712652ced614f6e5dadcb352416))
 - add add_bootstrap() to attach bootstraps to an analysis
@@ -43,9 +99,28 @@
 #### Other changes
 
 - release v0.3.0
-  ([13c6f9e](https://github.com/seanthimons/singlehit/tree/13c6f9ed998c1884957275208b4c98d3ebf31291))
+  ([a5e8633](https://github.com/seanthimons/singlehit/tree/a5e86334a5fb98e403b6ee1b61831cb53325821c))
 - block root-level markdown and dot files by default
   ([a23143e](https://github.com/seanthimons/singlehit/tree/a23143e1241a053772222a1dd08e916bda726b18))
+
+#### Shiny app
+
+- add a Bootstrap tab and use the Ward rotavirus data as the example
+  ([13c3a28](https://github.com/seanthimons/singlehit/tree/13c3a289eee380398d7482ade1b7dde6a466195a))
+- explain log axis and confidence bands on the Explore tab
+  ([92015d4](https://github.com/seanthimons/singlehit/tree/92015d4c763407e39d84a74aa738ee34f6824976))
+- add Explore tab built on esquisse and relicense the app to GPL-3
+  ([ffbeade](https://github.com/seanthimons/singlehit/tree/ffbeade2f93a0fb1a427ee3431b2ed1aca96b048))
+- add Plots tab with the standard singlehit figures
+  ([527243d](https://github.com/seanthimons/singlehit/tree/527243d00e12e75ae6a75feb3c6b2a99f59456ea))
+- add Data, Fit and Compare tabs
+  ([85bbea4](https://github.com/seanthimons/singlehit/tree/85bbea4887134e5b9b7acae801f8ad0351fd2f4d))
+- scaffold golem Shiny app as sidecar package in app/
+  ([caf7d45](https://github.com/seanthimons/singlehit/tree/caf7d4525e5691526de689b843d123f48fd836e4))
+- depend on plotly so esquisse’s startup probe and switch work
+  ([d6d2f5b](https://github.com/seanthimons/singlehit/tree/d6d2f5b94c338b94a04c110f874e1ff49316d348))
+- launch the app when dev/run_dev.R is run with source()
+  ([b7e9447](https://github.com/seanthimons/singlehit/tree/b7e9447deb8deecce289c457c1c7fb14dec15bb3))
 
 Full set of changes:
 [`v0.2.0...v0.3.0`](https://github.com/seanthimons/singlehit/compare/v0.2.0...v0.3.0)
