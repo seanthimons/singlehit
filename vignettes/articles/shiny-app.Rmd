@@ -25,6 +25,11 @@ To install a specific release, replace `*release` with its tag, for example
 `app@v0.4.0`. This replaces any other version of singlehit you have installed,
 including a development version from `main`.
 
+If you use an R version older than the current release and the one before it,
+first follow [Older versions of R](../index.html#older-versions-of-r). It sets
+up Posit Public Package Manager so that pak and the dependencies install as
+ready-built binaries instead of being compiled.
+
 Then start it whenever you want to use it:
 
 ```r

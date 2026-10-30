@@ -38,7 +38,8 @@ singlehitapp::run_app()                         # opens the app in your browser
 ```
 
 To install a specific release, replace `*release` with its tag, for example
-`app@v0.4.0`.
+`app@v0.4.0`. On an older version of R, see
+[Older versions of R](#older-versions-of-r) first.
 
 The tabs, from left to right:
 
@@ -109,6 +110,30 @@ other:
 ```r
 library(singlehit)
 ```
+
+### Older versions of R
+
+singlehit and the app contain no compiled code, but some of their dependencies
+do. CRAN provides ready-to-install (binary) versions of packages only for the
+current R release and the one before it. With an older R, packages may be
+installed from source, which can be slow and may fail without compilers
+(Rtools on Windows, Xcode on macOS).
+
+Posit Public Package Manager (P3M) provides binaries for several older R
+versions as well, on Windows, macOS, and common Linux distributions. Point R
+at it before installing anything, including pak:
+
+```r
+options(repos = c(CRAN = "https://packagemanager.posit.co/cran/latest"))
+install.packages("pak")             # if you don't have it yet
+pak::repo_add(CRAN = "PPM@latest") # adds your Linux distribution's binaries
+pak::pak("seanthimons/singlehit")   # or the app, as shown in "Shiny app"
+```
+
+These settings last only for the current R session. The first line also
+covers devtools users. On Linux, pak itself still installs from source; see
+[pak's installation guide](https://pak.r-lib.org/reference/install.html) for a
+binary. If your R is older than P3M covers, update R.
 
 ## Input data format
 
