@@ -1,7 +1,7 @@
 # GitHub Actions workflows
 
-These callers use [seanthimons/baseline v1.3.0](https://github.com/seanthimons/baseline/tree/733a6e4554870ab2fa8dd7495fa67bea029bb38c),
-pinned to `733a6e4554870ab2fa8dd7495fa67bea029bb38c`. Dependabot proposes
+These callers use [seanthimons/baseline v2.2.0](https://github.com/seanthimons/baseline/tree/ad7b0409c5ae8d28f293826fef0819bd74c7b9e0),
+pinned to `ad7b0409c5ae8d28f293826fef0819bd74c7b9e0`. Dependabot proposes
 grouped weekly updates with a `ci:` commit prefix.
 
 | Caller | Behavior |
@@ -17,6 +17,9 @@ grouped weekly updates with a `ci:` commit prefix.
 | `release.yaml` | Prepare a checked version-and-NEWS PR, then publish the merged version without pushing main. |
 
 The reusable workflows own job timeouts, action pins, and R profile isolation.
+Gitleaks requires `pull-requests: read` on the calling job (baseline v2.0.0 and
+later) because the reusable workflow lists a PR's commits through the API; with
+only `contents: read` it fails at startup.
 Coverage requires `id-token: write` even without Codecov because the reusable
 job declares that permission. Pages permissions are granted to the caller so
 the reusable deploy job can use them; the reusable build job explicitly keeps
