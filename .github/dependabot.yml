@@ -15,3 +15,8 @@ updates:
       actions:
         patterns:
           - "*"
+    # Baseline pins are tracked by track-release-pr.yaml; ignore them here so
+    # Dependabot does not open duplicate baseline PRs. Third-party actions keep
+    # their Dependabot PRs.
+    ignore:
+      - dependency-name: "seanthimons/baseline*"
