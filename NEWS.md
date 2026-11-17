@@ -1,6 +1,36 @@
 
 
 
+## singlehit v0.5.0 (2026-11-17)
+
+#### New features
+
+- report AIC weights per partition and fit each subset once
+  ([044946e](https://github.com/seanthimons/singlehit/tree/044946e97a41e14cf895056dbf09001c6891adcb))
+
+#### CI
+
+- track baseline releases
+  ([665fc1f](https://github.com/seanthimons/singlehit/tree/665fc1fb1ad74671eac672c1befa8d334e6a3594))
+- pin baseline callers to v2.2.0 and grant pull-requests read to
+  gitleaks
+  ([696d8a6](https://github.com/seanthimons/singlehit/tree/696d8a64057fdc720bd9ab3efd1837f66a9aa392))
+
+#### Docs
+
+- update workflow README for baseline v2.2.0
+  ([6fb9431](https://github.com/seanthimons/singlehit/tree/6fb9431cb434f9c6b62d802187693c7365993ff1))
+- point older-R users to P3M binaries
+  ([0189b7e](https://github.com/seanthimons/singlehit/tree/0189b7e11443d55df4939b5a9fc6f45ae335be98))
+
+#### Other changes
+
+- release v0.5.0
+  ([5d6afa6](https://github.com/seanthimons/singlehit/tree/5d6afa6a3d30e6cec791ac501c36c7e5901dc955))
+
+Full set of changes:
+[`v0.4.0...v0.5.0`](https://github.com/seanthimons/singlehit/compare/v0.4.0...v0.5.0)
+
 ## singlehit v0.4.0 (2026-10-30)
 
 #### Breaking changes
@@ -37,7 +67,7 @@
 #### Other changes
 
 - release v0.4.0
-  ([1033309](https://github.com/seanthimons/singlehit/tree/103330929fd0da4b10028b7128e0974a6e4743dd))
+  ([65e96f1](https://github.com/seanthimons/singlehit/tree/65e96f18d4fd45a4ced72eed9cb0890ea72d9dde))
 
 #### Shiny app
 
