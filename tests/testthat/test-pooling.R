@@ -123,6 +123,41 @@ test_that("bundled synthetic collection demonstrates passing and failing combina
     expect_equal(g$group[g$dataset == "A"], g$group[g$dataset == "B"])
     expect_false(g$group[g$dataset == "A"] == g$group[g$dataset == "C"])
   }
+  partitions <- attr(groups, "partitions")
+  for (table in partitions) {
+    expect_equal(nrow(table), 5L)
+    expect_equal(sum(table$aic_weight), 1)
+    expect_equal(sum(table$selected), 1L)
+    expect_equal(table$partition[table$selected], "A + B | C")
+    expect_equal(table$partition[which.max(table$aic_weight)], "A + B | C")
+  }
+  expect_null(attr(group_datasets(trials), "partitions"))
+})
+
+test_that("pooling fits each subset of datasets once", {
+  path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
+  raw <- readr::read_csv(path, show_col_types = FALSE)
+  trials <- split(raw, raw$study_id)
+  fits <- 0L
+  real_fit <- fit_core
+  local_mocked_bindings(fit_core = function(...) {
+    fits <<- fits + 1L
+    real_fit(...)
+  })
+  # 3 single datasets, 3 pairs, and 1 triple.
+  group_datasets(trials, models = "exponential", method = "exhaustive")
+  expect_equal(fits, 7L)
+  fits <- 0L
+  poolability_combinations(trials)
+  expect_equal(fits, 14L)
+})
+
+test_that("set partitions keep their tie-break order", {
+  expect_equal(
+    set_partitions(3L),
+    list(list(1:3), list(1:2, 3L), list(c(1L, 3L), 2L), list(1L, 2:3), list(1L, 2L, 3L))
+  )
+  expect_equal(lengths(lapply(1:6, set_partitions)), c(1, 2, 5, 15, 52, 203))
 })
 
 with_unit <- function(data, unit) {

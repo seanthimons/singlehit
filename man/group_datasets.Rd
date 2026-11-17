@@ -34,7 +34,12 @@ method (the number of set partitions grows super-exponentially).}
 \value{
 A long tibble with columns \code{dataset}, \code{model}, and integer \code{group}.
 The per-model matrix of pairwise pooling p-values is attached as the
-\code{"pairwise"} attribute.
+\code{"pairwise"} attribute. With \code{method = "exhaustive"}, a per-model tibble of
+every set partition is attached as the \code{"partitions"} attribute: \code{partition}
+(a readable label), \code{groups} (a list column of dataset names per group),
+\code{n_groups}, \code{min_p_value} (the smallest within-group pooling p-value),
+\code{all_groups_poolable}, \code{delta_aic}, \code{aic_weight}, and \code{selected}. Neither
+attribute is attached for a single dataset.
 }
 \description{
 Assigns datasets to groups such that the datasets within a group are
@@ -50,6 +55,16 @@ returns assignments, not pooled datasets or fitted models. Use
 \code{\link[=poolability_combinations]{poolability_combinations()}} to inspect overlapping candidate combinations.
 Datasets must share one \code{dose_unit} when they carry one, as in
 \code{\link[=poolability_test]{poolability_test()}}; hosts and endpoints are not checked.
+
+The \code{"partitions"} AIC weights are a diagnostic, not the selection rule.
+Each partition fits one parameter set per group, so its AIC is the summed
+group deviance plus twice the number of parameters; \code{aic_weight} is the
+relative support for that partition among all of them. A weight spread over
+several partitions means the data do not single out one grouping. Selecting
+by minimum AIC would split datasets more readily than the likelihood-ratio
+rule: its penalty per extra group (\verb{2k}) is a lower bar than the chi-squared
+critical value at \code{alpha} (2 versus 3.84 for the exponential model at 0.05),
+and the search gives it many partitions to choose from.
 }
 \examples{
 path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
@@ -59,4 +74,6 @@ groups <- group_datasets(trials, method = "exhaustive")
 groups
 # For both models, A and B share group 1; C is in group 2.
 attr(groups, "pairwise")
+# A + B | C carries most of the AIC weight; A | B | C is the runner-up.
+attr(groups, "partitions")$exponential[c("partition", "selected", "aic_weight")]
 }
