@@ -82,12 +82,17 @@ poolability_test <- function(datasets, models = c("exponential", "beta_poisson")
   }
   models <- validate_model_set(models)
   validate_alpha(alpha)
+  pool_test_rows(fit_cache(standardized), seq_along(standardized), models, alpha)
+}
 
-  m <- length(standardized)
+# The poolability test for the datasets at positions `idx`, drawing fits from a
+# shared `fit_cache()` so callers testing many subsets fit each one once.
+pool_test_rows <- function(fit, idx, models, alpha) {
+  m <- length(idx)
   result <- purrr::map_dfr(models, function(model) {
     k <- length(model_parameters(model))
-    fits <- lapply(standardized, function(dataset) fit_core(dataset, model))
-    pooled <- fit_core(dplyr::bind_rows(standardized), model)
+    fits <- lapply(idx, function(i) fit(model, i))
+    pooled <- fit(model, idx)
     deviance_unpooled <- sum(vapply(fits, function(fit) fit$deviance, numeric(1)))
     lrt <- max(pooled$deviance - deviance_unpooled, 0)
     df <- k * (m - 1L)
@@ -168,11 +173,11 @@ poolability_combinations <- function(
   }
   models <- validate_model_set(models)
   validate_alpha(alpha)
-  # ponytail: refit subsets up to the collection limit; cache fits if larger collections are needed.
   subsets <- unlist(lapply(2:n, function(size) utils::combn(n, size, simplify = FALSE)), recursive = FALSE)
+  fit <- fit_cache(standardized)
   purrr::map_dfr(subsets, function(idx) {
     labels <- names(standardized)[idx]
-    result <- poolability_test(standardized[idx], models = models, alpha = alpha)
+    result <- pool_test_rows(fit, idx, models, alpha)
     dplyr::bind_cols(
       tibble::tibble(combination = rep(paste(labels, collapse = " + "), nrow(result)),
                      datasets = rep(list(labels), nrow(result))),
@@ -201,12 +206,27 @@ poolability_combinations <- function(
 #'
 #' @return A long tibble with columns `dataset`, `model`, and integer `group`.
 #'   The per-model matrix of pairwise pooling p-values is attached as the
-#'   `"pairwise"` attribute.
+#'   `"pairwise"` attribute. With `method = "exhaustive"`, a per-model tibble of
+#'   every set partition is attached as the `"partitions"` attribute: `partition`
+#'   (a readable label), `groups` (a list column of dataset names per group),
+#'   `n_groups`, `min_p_value` (the smallest within-group pooling p-value),
+#'   `all_groups_poolable`, `delta_aic`, `aic_weight`, and `selected`. Neither
+#'   attribute is attached for a single dataset.
 #' @details Group numbers are labels within a model, not rankings. This function
 #' returns assignments, not pooled datasets or fitted models. Use
 #' [poolability_combinations()] to inspect overlapping candidate combinations.
 #' Datasets must share one `dose_unit` when they carry one, as in
 #' [poolability_test()]; hosts and endpoints are not checked.
+#'
+#' The `"partitions"` AIC weights are a diagnostic, not the selection rule.
+#' Each partition fits one parameter set per group, so its AIC is the summed
+#' group deviance plus twice the number of parameters; `aic_weight` is the
+#' relative support for that partition among all of them. A weight spread over
+#' several partitions means the data do not single out one grouping. Selecting
+#' by minimum AIC would split datasets more readily than the likelihood-ratio
+#' rule: its penalty per extra group (`2k`) is a lower bar than the chi-squared
+#' critical value at `alpha` (2 versus 3.84 for the exponential model at 0.05),
+#' and the search gives it many partitions to choose from.
 #' @examples
 #' path <- system.file("extdata", "pooling-example.csv", package = "singlehit")
 #' raw <- readr::read_csv(path, show_col_types = FALSE)
@@ -215,6 +235,8 @@ poolability_combinations <- function(
 #' groups
 #' # For both models, A and B share group 1; C is in group 2.
 #' attr(groups, "pairwise")
+#' # A + B | C carries most of the AIC weight; A | B | C is the runner-up.
+#' attr(groups, "partitions")$exponential[c("partition", "selected", "aic_weight")]
 #' @export
 group_datasets <- function(
   datasets,
@@ -246,18 +268,24 @@ group_datasets <- function(
     )
   }
 
+  fit <- fit_cache(standardized)
   pairwise <- list()
+  partitions <- list()
   result <- purrr::map_dfr(models, function(model) {
-    deviance_individual <- vapply(standardized, function(dataset) fit_core(dataset, model)$deviance, numeric(1))
-    pairwise[[model]] <<- pairwise_pooling_matrix(standardized, deviance_individual, model)
+    pairwise[[model]] <<- pairwise_pooling_matrix(fit, model, dataset_labels)
     groups <- if (method == "agglomerative") {
-      agglomerative_groups(standardized, deviance_individual, model, alpha)
+      agglomerative_groups(fit, m, model, alpha)
     } else {
-      exhaustive_groups(standardized, deviance_individual, model, alpha)
+      partitions[[model]] <<- exhaustive_partitions(fit, model, dataset_labels, alpha)
+      chosen <- partitions[[model]]$groups[[which(partitions[[model]]$selected)]]
+      group_assignment(lapply(chosen, match, dataset_labels), m)
     }
     tibble::tibble(dataset = dataset_labels, model = model, group = groups)
   })
   attr(result, "pairwise") <- pairwise
+  if (method == "exhaustive") {
+    attr(result, "partitions") <- partitions
+  }
   result
 }
 
@@ -335,27 +363,42 @@ pool_conclusion <- function(model, poolable) {
   }
 }
 
+# Memoised fit_core() for one top-level call: each model and subset of
+# datasets is fitted once, stacked in index order, however many tests or
+# partitions reuse it.
+fit_cache <- function(standardized) {
+  fits <- new.env(parent = emptyenv())
+  function(model, idx) {
+    idx <- sort(idx)
+    key <- paste(model, paste(idx, collapse = ","))
+    if (is.null(fits[[key]])) {
+      data <- if (length(idx) == 1L) standardized[[idx]] else dplyr::bind_rows(standardized[idx])
+      fits[[key]] <- fit_core(data, model)
+    }
+    fits[[key]]
+  }
+}
+
 # p-value for pooling the datasets at positions `idx`. A singleton is trivially
 # poolable (no test), returning 1.
-pool_p_value <- function(standardized, deviance_individual, model, idx) {
+pool_p_value <- function(fit, model, idx) {
   size <- length(idx)
   if (size < 2L) {
     return(1)
   }
   k <- length(model_parameters(model))
-  pooled_deviance <- fit_core(dplyr::bind_rows(standardized[idx]), model)$deviance
-  lrt <- max(pooled_deviance - sum(deviance_individual[idx]), 0)
+  deviance_individual <- vapply(idx, function(i) fit(model, i)$deviance, numeric(1))
+  lrt <- max(fit(model, idx)$deviance - sum(deviance_individual), 0)
   stats::pchisq(lrt, df = k * (size - 1L), lower.tail = FALSE)
 }
 
-pairwise_pooling_matrix <- function(standardized, deviance_individual, model) {
-  m <- length(standardized)
-  labels <- names(standardized)
+pairwise_pooling_matrix <- function(fit, model, labels) {
+  m <- length(labels)
   matrix_out <- matrix(NA_real_, m, m, dimnames = list(labels, labels))
   diag(matrix_out) <- 1
   for (i in seq_len(m - 1L)) {
     for (j in (i + 1L):m) {
-      p <- pool_p_value(standardized, deviance_individual, model, c(i, j))
+      p <- pool_p_value(fit, model, c(i, j))
       matrix_out[i, j] <- p
       matrix_out[j, i] <- p
     }
@@ -364,10 +407,9 @@ pairwise_pooling_matrix <- function(standardized, deviance_individual, model) {
 }
 
 # Greedy agglomerative grouping: merge the most compatible poolable pair of
-# groups until none remain poolable. Individual deviances are cached; only the
-# merged-group deviance is refit each step.
-agglomerative_groups <- function(standardized, deviance_individual, model, alpha) {
-  groups <- as.list(seq_along(standardized))
+# groups until none remain poolable.
+agglomerative_groups <- function(fit, m, model, alpha) {
+  groups <- as.list(seq_len(m))
   repeat {
     n <- length(groups)
     if (n < 2L) {
@@ -377,7 +419,7 @@ agglomerative_groups <- function(standardized, deviance_individual, model, alpha
     best_pair <- NULL
     for (i in seq_len(n - 1L)) {
       for (j in (i + 1L):n) {
-        p <- pool_p_value(standardized, deviance_individual, model, c(groups[[i]], groups[[j]]))
+        p <- pool_p_value(fit, model, c(groups[[i]], groups[[j]]))
         if (p > best_p) {
           best_p <- p
           best_pair <- c(i, j)
@@ -390,40 +432,46 @@ agglomerative_groups <- function(standardized, deviance_individual, model, alpha
     merged <- c(groups[[best_pair[1L]]], groups[[best_pair[2L]]])
     groups <- c(groups[-best_pair], list(merged))
   }
-  group_assignment(groups, length(standardized))
+  group_assignment(groups, m)
 }
 
 # Exhaustive grouping: keep every set partition whose groups are all poolable,
 # then choose the coarsest (fewest groups), tie-broken by the largest minimum
-# within-group pooling p-value.
-exhaustive_groups <- function(standardized, deviance_individual, model, alpha) {
-  partitions <- set_partitions(length(standardized))
-  valid <- Filter(
-    function(partition) {
-      all(vapply(
-        partition,
-        function(idx) pool_p_value(standardized, deviance_individual, model, idx) > alpha,
-        logical(1)
-      ))
-    },
-    partitions
-  )
-  # The all-singletons partition is always valid (each block is trivially
-  # poolable), so `valid` is never empty.
-  sizes <- lengths(valid)
-  coarsest <- valid[sizes == min(sizes)]
+# within-group pooling p-value. Returns one row per partition. AIC weights are
+# reported alongside as a diagnostic; they do not drive the choice. The
+# all-singletons partition always passes, so a partition is always selected.
+exhaustive_partitions <- function(fit, model, labels, alpha) {
+  k <- length(model_parameters(model))
+  partitions <- set_partitions(length(labels))
   min_p <- vapply(
-    coarsest,
-    function(partition) {
-      min(vapply(
-        partition,
-        function(idx) pool_p_value(standardized, deviance_individual, model, idx),
-        numeric(1)
-      ))
-    },
+    partitions,
+    function(partition) min(vapply(partition, function(idx) pool_p_value(fit, model, idx), numeric(1))),
     numeric(1)
   )
-  group_assignment(coarsest[[which.max(min_p)]], length(standardized))
+  deviance <- vapply(
+    partitions,
+    function(partition) sum(vapply(partition, function(idx) fit(model, idx)$deviance, numeric(1))),
+    numeric(1)
+  )
+  n_groups <- lengths(partitions)
+  poolable <- min_p > alpha
+  coarsest <- which(poolable & n_groups == min(n_groups[poolable]))
+  # fit_core() deviance is relative to the saturated model, which every
+  # partition shares, so AIC differences are exact.
+  delta_aic <- deviance + 2 * k * n_groups
+  delta_aic <- delta_aic - min(delta_aic)
+  weight <- exp(-delta_aic / 2)
+  groups <- lapply(partitions, function(partition) lapply(partition, function(idx) labels[idx]))
+  tibble::tibble(
+    partition = vapply(groups, function(g) paste(vapply(g, paste, character(1), collapse = " + "), collapse = " | "), character(1)),
+    groups = groups,
+    n_groups = n_groups,
+    min_p_value = min_p,
+    all_groups_poolable = poolable,
+    delta_aic = delta_aic,
+    aic_weight = weight / sum(weight),
+    selected = seq_along(partitions) == coarsest[which.max(min_p[coarsest])]
+  )
 }
 
 # Turn a list of index vectors into a deterministic integer group id per dataset
@@ -438,20 +486,11 @@ group_assignment <- function(groups, m) {
 }
 
 # All set partitions of {1..n} as a list of partitions, each a list of index
-# vectors. Grows as the Bell number, so callers cap n (see `max_exhaustive`).
+# vectors, from partitions::setparts(). Ordered by their group labels (first
+# member's group is 1, and so on) so the exhaustive tie-break is stable. Grows
+# as the Bell number, so callers cap n (see `max_exhaustive`).
 set_partitions <- function(n) {
-  if (n == 0L) {
-    return(list(list()))
-  }
-  previous <- set_partitions(n - 1L)
-  result <- list()
-  for (partition in previous) {
-    for (block in seq_along(partition)) {
-      extended <- partition
-      extended[[block]] <- c(extended[[block]], n)
-      result[[length(result) + 1L]] <- extended
-    }
-    result[[length(result) + 1L]] <- c(partition, list(n))
-  }
-  result
+  labels <- apply(partitions::setparts(n), 2L, function(x) match(x, unique(x)), simplify = FALSE)
+  labels <- labels[do.call(order, as.data.frame(do.call(rbind, labels)))]
+  lapply(labels, function(x) unname(split(seq_len(n), x)))
 }
